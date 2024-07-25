@@ -1,51 +1,40 @@
 # Name and metadata of your task
-task_name: '#koii Twitter Archive'
-author: 'Soma'
-description: "We invite you to volunteer your spare Twitter account to help us archive Twitter by the keyword of your preference. This initiative is a not-for-profit endeavor, sponsored by the Koii Foundation. Before participating, please ensure that your volunteer Twitter account has passed the verification process. Rewards are calculated based on the amount of time your node remains online. The longer you stay online, the greater the reward you will receive. The base bounty per round is 3000 KOII, which will be divided among users who have made submissions in the last round. It's a good idea to use a secondary Twitter account for this project to maintain the smooth functioning of your main account."
-repositoryUrl: 'https://github.com/koii-network/task-X'
-imageUrl: 'https://bafybeienjq6idlhd7zwpdoqj2pdzjbomntfcg76dr5in5qeqkw2zczrrfi.ipfs.w3s.link/x-task.png'
+task_name: 'task name'
+author: 'Koii'
+description: 'description'
+repositoryUrl: 'https://github.com/koii-network/task-template' #replace with your own repo url
+imageUrl: 'imageUrl'
 
-# network value can be DEVELOPMENT , ARWEAVE or IPFS, Recommended IPFS when deploying to testnet as the cli automatically takes care of uploading the executable with the help of web3.js key
+# task_executable_network : DEVELOPMENT, ARWEAVE or IPFS
+# IPFS is the default value, as the CLI automatically manages the upload process via the Koii Storage SDK.
 task_executable_network: 'IPFS'
 
-# Path to your executable webpack if the selected network is IPFS and in case of DEVELOPMENT  name it as main
+# task_audit_program: Path to your executable webpack if the selected network is IPFS and in case of DEVELOPMENT name it as main
 task_audit_program: 'dist/main.js'
 
-# Total round time of your task : it must be given in slots and each slot is roughly equal to 408ms
-round_time: 13500
+# round_time: The total duration of your task, measured in slots (with each slot approximately equal to 408ms)
+round_time: 1500
+audit_window: 350
+submission_window: 350
 
-audit_window: 5000
-submission_window: 5000
-
-# Amounts in KOII
-
+# minimum_stake_amount: The minimum amount of KOII that a user must stake in order to participate in the task
 minimum_stake_amount: 1.9
 
 # total_bounty_amount cannot be grater than bounty_amount_per_round
-# total bounty is not accepted in case of update task
-total_bounty_amount: 100000
+# total bounty_amount: The total bounty amount that will be distributed to the task. (Not accepted in case of update task)
+total_bounty_amount: 10
+bounty_amount_per_round: 0.1
 
-bounty_amount_per_round: 3000
-
-#Number of times allowed to re-submit the distribution  list in case the distribution list is audited
+# allowed_failed_distributions: Number of times re-submission is allowed for the distribution list in case of an audit.
 allowed_failed_distributions: 3
 
-#Space in MBs for the account size, that holds the task data
-space: 5
+# space: Space in MBs for the account size, that holds the task data.
+space: 1
 
 # Note that the value field in RequirementTag is optional, so it is up to you to include it or not based on your use case.
-# To add more global variables and task variables, please refer the type,value,description format shown below
+# To add more global variables and task variables, please refer the type,value, description format shown below
 
 requirementsTags:
-  - type: TASK_VARIABLE
-    value: 'TWITTER_USERNAME'
-    description: 'The username of your volunteer Twitter account. Please ensure your volunteer Twitter account has passed the Twitter verification process.'
-  - type: TASK_VARIABLE
-    value: 'TWITTER_PASSWORD'
-    description: 'The password of your volunteer Twitter account.'
-  - type: TASK_VARIABLE
-    value: 'TWITTER_PHONE'
-    description: 'If verification is required, will use your phone number to login.'
   - type: CPU
     value: '4-core'
   - type: RAM
@@ -55,8 +44,9 @@ requirementsTags:
 
 # OPTIONAL variables variables for creating task / REQUIRED variables for update task
 
-# OPTIONAL Only provide the taskId if you are updating the task otherwise leave blank
-task_id: 'HRdRBAwzLJoW9DeCmKgsfrt5SAn2XoRNtDqrKckTwZDc'
+# ONLY provide the task_id and migrationDescription if you are updating the task otherwise leave blank
+# task_id: Previous task id
+task_id: ''
 
-# Provide the description for changes made in new version of task
-migrationDescription: 'Updated audit function. '
+# migrationDescription: Provide the description for changes made in new version of task
+migrationDescription: ''

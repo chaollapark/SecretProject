@@ -15,12 +15,14 @@ const makeSerializable = require("./util/makeSerializable");
 /** @typedef {import("../declarations/WebpackOptions").WebpackOptionsNormalized} WebpackOptions */
 /** @typedef {import("./ChunkGraph")} ChunkGraph */
 /** @typedef {import("./Compilation")} Compilation */
+/** @typedef {import("./Dependency")} Dependency */
 /** @typedef {import("./Dependency").UpdateHashContext} UpdateHashContext */
 /** @typedef {import("./DependencyTemplates")} DependencyTemplates */
 /** @typedef {import("./Module").CodeGenerationContext} CodeGenerationContext */
 /** @typedef {import("./Module").CodeGenerationResult} CodeGenerationResult */
 /** @typedef {import("./Module").NeedBuildContext} NeedBuildContext */
 /** @typedef {import("./Module").SourceContext} SourceContext */
+/** @typedef {import("./Module").SourceTypes} SourceTypes */
 /** @typedef {import("./RequestShortener")} RequestShortener */
 /** @typedef {import("./ResolverFactory").ResolverWithOptions} ResolverWithOptions */
 /** @typedef {import("./RuntimeTemplate")} RuntimeTemplate */
@@ -37,16 +39,22 @@ const RUNTIME_REQUIREMENTS = new Set([
 ]);
 
 class DllModule extends Module {
+	/**
+	 * @param {string} context context path
+	 * @param {Dependency[]} dependencies dependencies
+	 * @param {string} name name
+	 */
 	constructor(context, dependencies, name) {
 		super(JAVASCRIPT_MODULE_TYPE_DYNAMIC, context);
 
 		// Info from Factory
+		/** @type {Dependency[]} */
 		this.dependencies = dependencies;
 		this.name = name;
 	}
 
 	/**
-	 * @returns {Set<string>} types available (do not mutate)
+	 * @returns {SourceTypes} types available (do not mutate)
 	 */
 	getSourceTypes() {
 		return TYPES;
@@ -89,7 +97,7 @@ class DllModule extends Module {
 		const sources = new Map();
 		sources.set(
 			"javascript",
-			new RawSource("module.exports = __webpack_require__;")
+			new RawSource(`module.exports = ${RuntimeGlobals.require};`)
 		);
 		return {
 			sources,

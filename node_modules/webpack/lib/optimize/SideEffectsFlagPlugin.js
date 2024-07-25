@@ -16,25 +16,32 @@ const HarmonyExportImportedSpecifierDependency = require("../dependencies/Harmon
 const HarmonyImportSpecifierDependency = require("../dependencies/HarmonyImportSpecifierDependency");
 const formatLocation = require("../formatLocation");
 
+/** @typedef {import("estree").ModuleDeclaration} ModuleDeclaration */
+/** @typedef {import("estree").Statement} Statement */
 /** @typedef {import("../Compiler")} Compiler */
 /** @typedef {import("../Dependency")} Dependency */
+/** @typedef {import("../Dependency").DependencyLocation} DependencyLocation */
 /** @typedef {import("../Module")} Module */
+/** @typedef {import("../Module").BuildMeta} BuildMeta */
 /** @typedef {import("../javascript/JavascriptParser")} JavascriptParser */
+/** @typedef {import("../javascript/JavascriptParser").Range} Range */
 
 /**
- * @typedef {Object} ExportInModule
+ * @typedef {object} ExportInModule
  * @property {Module} module the module
  * @property {string} exportName the name of the export
  * @property {boolean} checked if the export is conditional
  */
 
 /**
- * @typedef {Object} ReexportInfo
+ * @typedef {object} ReexportInfo
  * @property {Map<string, ExportInModule[]>} static
  * @property {Map<Module, Set<string>>} dynamic
  */
 
-/** @type {WeakMap<any, Map<string, RegExp>>} */
+/** @typedef {Map<string, RegExp>} CacheItem */
+
+/** @type {WeakMap<any, CacheItem>} */
 const globToRegexpCache = new WeakMap();
 
 /**
@@ -94,7 +101,7 @@ class SideEffectsFlagPlugin {
 							const hasSideEffects = SideEffectsFlagPlugin.moduleHasSideEffects(
 								resolveData.relativePath,
 								sideEffects,
-								cache
+								/** @type {CacheItem} */ (cache)
 							);
 							module.factoryMeta.sideEffectFree = !hasSideEffects;
 						}
@@ -117,6 +124,7 @@ class SideEffectsFlagPlugin {
 					 * @returns {void}
 					 */
 					const parserHandler = parser => {
+						/** @type {undefined | Statement | ModuleDeclaration} */
 						let sideEffectsStatement;
 						parser.hooks.program.tap(PLUGIN_NAME, () => {
 							sideEffectsStatement = undefined;
@@ -129,7 +137,10 @@ class SideEffectsFlagPlugin {
 								switch (statement.type) {
 									case "ExpressionStatement":
 										if (
-											!parser.isPure(statement.expression, statement.range[0])
+											!parser.isPure(
+												statement.expression,
+												/** @type {Range} */ (statement.range)[0]
+											)
 										) {
 											sideEffectsStatement = statement;
 										}
@@ -137,27 +148,35 @@ class SideEffectsFlagPlugin {
 									case "IfStatement":
 									case "WhileStatement":
 									case "DoWhileStatement":
-										if (!parser.isPure(statement.test, statement.range[0])) {
+										if (
+											!parser.isPure(
+												statement.test,
+												/** @type {Range} */ (statement.range)[0]
+											)
+										) {
 											sideEffectsStatement = statement;
 										}
 										// statement hook will be called for child statements too
 										break;
 									case "ForStatement":
 										if (
-											!parser.isPure(statement.init, statement.range[0]) ||
+											!parser.isPure(
+												statement.init,
+												/** @type {Range} */ (statement.range)[0]
+											) ||
 											!parser.isPure(
 												statement.test,
 												statement.init
-													? statement.init.range[1]
-													: statement.range[0]
+													? /** @type {Range} */ (statement.init.range)[1]
+													: /** @type {Range} */ (statement.range)[0]
 											) ||
 											!parser.isPure(
 												statement.update,
 												statement.test
-													? statement.test.range[1]
+													? /** @type {Range} */ (statement.test.range)[1]
 													: statement.init
-													? statement.init.range[1]
-													: statement.range[0]
+														? /** @type {Range} */ (statement.init.range)[1]
+														: /** @type {Range} */ (statement.range)[0]
 											)
 										) {
 											sideEffectsStatement = statement;
@@ -166,7 +185,10 @@ class SideEffectsFlagPlugin {
 										break;
 									case "SwitchStatement":
 										if (
-											!parser.isPure(statement.discriminant, statement.range[0])
+											!parser.isPure(
+												statement.discriminant,
+												/** @type {Range} */ (statement.range)[0]
+											)
 										) {
 											sideEffectsStatement = statement;
 										}
@@ -175,14 +197,22 @@ class SideEffectsFlagPlugin {
 									case "VariableDeclaration":
 									case "ClassDeclaration":
 									case "FunctionDeclaration":
-										if (!parser.isPure(statement, statement.range[0])) {
+										if (
+											!parser.isPure(
+												statement,
+												/** @type {Range} */ (statement.range)[0]
+											)
+										) {
 											sideEffectsStatement = statement;
 										}
 										break;
 									case "ExportNamedDeclaration":
 									case "ExportDefaultDeclaration":
 										if (
-											!parser.isPure(statement.declaration, statement.range[0])
+											!parser.isPure(
+												statement.declaration,
+												/** @type {Range} */ (statement.range)[0]
+											)
 										) {
 											sideEffectsStatement = statement;
 										}
@@ -205,7 +235,8 @@ class SideEffectsFlagPlugin {
 						);
 						parser.hooks.finish.tap(PLUGIN_NAME, () => {
 							if (sideEffectsStatement === undefined) {
-								parser.state.module.buildMeta.sideEffectFree = true;
+								/** @type {BuildMeta} */
+								(parser.state.module.buildMeta).sideEffectFree = true;
 							} else {
 								const { loc, type } = sideEffectsStatement;
 								moduleGraph
@@ -213,7 +244,7 @@ class SideEffectsFlagPlugin {
 									.push(
 										() =>
 											`Statement (${type}) with side effects in source code at ${formatLocation(
-												loc
+												/** @type {DependencyLocation} */ (loc)
 											)}`
 									);
 							}
@@ -240,7 +271,15 @@ class SideEffectsFlagPlugin {
 						);
 
 						logger.time("update dependencies");
-						for (const module of modules) {
+
+						const optimizedModules = new Set();
+
+						/**
+						 * @param {Module} module module
+						 */
+						const optimizeIncomingConnections = module => {
+							if (optimizedModules.has(module)) return;
+							optimizedModules.add(module);
 							if (module.getSideEffectsConnectionState(moduleGraph) === false) {
 								const exportsInfo = moduleGraph.getExportsInfo(module);
 								for (const connection of moduleGraph.getIncomingConnections(
@@ -255,10 +294,13 @@ class SideEffectsFlagPlugin {
 										(dep instanceof HarmonyImportSpecifierDependency &&
 											!dep.namespaceObjectAsContext)
 									) {
+										if (connection.originModule !== null) {
+											optimizeIncomingConnections(connection.originModule);
+										}
 										// TODO improve for export *
 										if (isReexport && dep.name) {
 											const exportInfo = moduleGraph.getExportInfo(
-												connection.originModule,
+												/** @type {Module} */ (connection.originModule),
 												dep.name
 											);
 											exportInfo.moveTarget(
@@ -311,6 +353,10 @@ class SideEffectsFlagPlugin {
 									}
 								}
 							}
+						};
+
+						for (const module of modules) {
+							optimizeIncomingConnections(module);
 						}
 						logger.timeEnd("update dependencies");
 					}
@@ -319,6 +365,12 @@ class SideEffectsFlagPlugin {
 		);
 	}
 
+	/**
+	 * @param {string} moduleName the module name
+	 * @param {undefined | boolean | string | string[]} flagValue the flag value
+	 * @param {Map<string, RegExp>} cache cache for glob to regexp
+	 * @returns {boolean | undefined} true, when the module has side effects, undefined or false when not
+	 */
 	static moduleHasSideEffects(moduleName, flagValue, cache) {
 		switch (typeof flagValue) {
 			case "undefined":

@@ -14,8 +14,10 @@ const ContextElementDependency = require("./ContextElementDependency");
 const RequireContextDependency = require("./RequireContextDependency");
 const RequireContextDependencyParserPlugin = require("./RequireContextDependencyParserPlugin");
 
+/** @typedef {import("../../declarations/WebpackOptions").JavascriptParserOptions} JavascriptParserOptions */
 /** @typedef {import("../../declarations/WebpackOptions").ResolveOptions} ResolveOptions */
 /** @typedef {import("../Compiler")} Compiler */
+/** @typedef {import("../javascript/JavascriptParser")} Parser */
 
 /** @type {ResolveOptions} */
 const EMPTY_RESOLVE_OPTIONS = {};
@@ -46,6 +48,11 @@ class RequireContextPlugin {
 					normalModuleFactory
 				);
 
+				/**
+				 * @param {Parser} parser parser parser
+				 * @param {JavascriptParserOptions} parserOptions parserOptions
+				 * @returns {void}
+				 */
 				const handler = (parser, parserOptions) => {
 					if (
 						parserOptions.requireContext !== undefined &&
@@ -73,7 +80,7 @@ class RequireContextPlugin {
 							cachedSetProperty(
 								options.resolveOptions || EMPTY_RESOLVE_OPTIONS,
 								"dependencyType",
-								options.category
+								/** @type {string} */ (options.category)
 							)
 						).options;
 

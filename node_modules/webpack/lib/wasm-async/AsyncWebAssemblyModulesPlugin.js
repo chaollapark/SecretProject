@@ -15,6 +15,7 @@ const { compareModulesByIdentifier } = require("../util/comparators");
 const memoize = require("../util/memoize");
 
 /** @typedef {import("webpack-sources").Source} Source */
+/** @typedef {import("../../declarations/WebpackOptions").OutputNormalized} OutputOptions */
 /** @typedef {import("../Chunk")} Chunk */
 /** @typedef {import("../ChunkGraph")} ChunkGraph */
 /** @typedef {import("../CodeGenerationResults")} CodeGenerationResults */
@@ -25,6 +26,7 @@ const memoize = require("../util/memoize");
 /** @typedef {import("../RuntimeTemplate")} RuntimeTemplate */
 /** @typedef {import("../Template").RenderManifestEntry} RenderManifestEntry */
 /** @typedef {import("../Template").RenderManifestOptions} RenderManifestOptions */
+/** @typedef {import("../WebpackError")} WebpackError */
 
 const getAsyncWebAssemblyGenerator = memoize(() =>
 	require("./AsyncWebAssemblyGenerator")
@@ -37,7 +39,7 @@ const getAsyncWebAssemblyParser = memoize(() =>
 );
 
 /**
- * @typedef {Object} WebAssemblyRenderContext
+ * @typedef {object} WebAssemblyRenderContext
  * @property {Chunk} chunk the chunk
  * @property {DependencyTemplates} dependencyTemplates the dependency templates
  * @property {RuntimeTemplate} runtimeTemplate the runtime template
@@ -47,8 +49,13 @@ const getAsyncWebAssemblyParser = memoize(() =>
  */
 
 /**
- * @typedef {Object} CompilationHooks
+ * @typedef {object} CompilationHooks
  * @property {SyncWaterfallHook<[Source, Module, WebAssemblyRenderContext]>} renderModuleContent
+ */
+
+/**
+ * @typedef {object} AsyncWebAssemblyModulesPluginOptions
+ * @property {boolean} [mangleImports] mangle imports
  */
 
 /** @type {WeakMap<Compilation, CompilationHooks>} */
@@ -81,6 +88,9 @@ class AsyncWebAssemblyModulesPlugin {
 		return hooks;
 	}
 
+	/**
+	 * @param {AsyncWebAssemblyModulesPluginOptions} options options
+	 */
 	constructor(options) {
 		this.options = options;
 	}
@@ -140,7 +150,8 @@ class AsyncWebAssemblyModulesPlugin {
 						)) {
 							if (module.type === WEBASSEMBLY_MODULE_TYPE_ASYNC) {
 								const filenameTemplate =
-									outputOptions.webassemblyModuleFilename;
+									/** @type {NonNullable<OutputOptions["webassemblyModuleFilename"]>} */
+									(outputOptions.webassemblyModuleFilename);
 
 								result.push({
 									render: () =>
@@ -178,6 +189,12 @@ class AsyncWebAssemblyModulesPlugin {
 		);
 	}
 
+	/**
+	 * @param {Module} module the rendered module
+	 * @param {WebAssemblyRenderContext} renderContext options object
+	 * @param {CompilationHooks} hooks hooks
+	 * @returns {Source} the newly generated source from rendering
+	 */
 	renderModule(module, renderContext, hooks) {
 		const { codeGenerationResults, chunk } = renderContext;
 		try {
@@ -192,7 +209,7 @@ class AsyncWebAssemblyModulesPlugin {
 				"AsyncWebAssemblyModulesPlugin.getCompilationHooks().renderModuleContent"
 			);
 		} catch (e) {
-			e.module = module;
+			/** @type {WebpackError} */ (e).module = module;
 			throw e;
 		}
 	}

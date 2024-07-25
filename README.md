@@ -1,20 +1,49 @@
-# This is a commenter project for the koii blockchain
+# Koii Hello World Task
 
-It is supposed to write comments on designated politicians from your personal twitter account. So you run the koii project, and you get rewarded for doing something right (hopefully).
+This is a simple task which uses Webpack to allow support of all node modules and project structures instead of a single file executable for the Koii task. The main purpose is to simply print `hello world`!
 
-It also sends an email that proposes Kermit the frog as democratic presidential candidate (this funciton is still being worked on)
+## How to Setup
 
-## Setup information is on the koii website (and check out their amazing docs)
-how do make your own project
-https://github.com/koii-network/ezsandbox/blob/main/Lesson%201/PartIV.md
+1. Clone this repo
+2. Run `npm install`
+3. Run `npm test` to simulate rounds or `npm run prod-debug` for the live debugger
 
-Other koii documentation
-https://docs.koii.network/
+## Structure Breakdown
 
-## The message that will be sent
-Bin Biden - How will he beat this?
-![Trump triumphant after assasination attempt](imags/s_BF38E266280C4332A29ED0AE9DACD0C37D30AAA3B2E109CFE8C8F22096A0F00F_1721013224644_AP24195803307155.jpeg)
+The task template contains three separate JavaScript files in the task folder that contain all of the functions for a Koii task to function properly.
 
-Kermit the frog polls better than Biden - nominate Hermit the frog for the DNC
-![Presidential photo of Kermit](<imags/Kermit for President.jpeg>)
-## This is part of the assholes in politics project
+```bash
+📦hello-world
+ ┣ 📂_koiiNode
+ ┃ ┗ 📜koiiNode.js // Contains all the components that task connect to K2.
+ ┣ 📂task
+ ┃ ┣ 📜index.js // Main file that contains the task function.
+ ┃ ┣ 📜submission.js // Contains the task function and submitTask function.
+ ┃ ┣ 📜audit.js // Contains the auditTask function.
+ ┃ ┗ 📜distribution.js // Contains the submitDistributionList and auditDistribution function.
+ ┣ 📂tests
+ ┣ 📜config-task.yml
+ ┣ 📜debugger.js
+ ┣ 📜prod-debug.js // used for live debugging
+ ┣ 📜coreLogic.js
+ ┗ 📜index.js
+```
+
+## What's in the Template
+
+### Core files
+
+- index.js — is the hub of your app, and ties the other pieces together. This will be the entry point when your task runs on task nodes.
+
+- \_koiiNode — is a directory that contains koiiNode.js which has the interfaces to make API calls to the core of the task node. It contains all the necessary functions required to submit and audit the work, as well as the distribution lists. Check [here](https://docs.koii.network/develop/write-a-koii-task/task-development-kit-tdk/using-the-task-namespace/the-namespace-object) to learn more about namespace functions.
+
+### Task Directory
+
+It houses three key files: submission.js, audit.js and distribution.js. These files are where you define your task, audit, and distribution logic, enabling you to control the core functionality of the task.
+
+This structure allows a modular approach to task development. By only utilizing these three files, you can easily modify and test your task logic without having to worry about the other aspects. To understand the theory behind this, please refer to the
+[Runtime Flow](https://docs.koii.network/concepts/gradual-consensus/runtime-flow).
+
+Finally, in the index.js file, all these functions are combined as a task, which is then imported and used in corelogic.js. It is advisable to organize separate features into sub-files and import them into the relevant files before web-packing for better code management and maintainability. This modular approach allows for a more organized and efficient development process.
+
+For more information about how to customize your own task, please check our docs [here](https://docs.koii.network/develop/write-a-koii-task/task-development-guide/introduction).

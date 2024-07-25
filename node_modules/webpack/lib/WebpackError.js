@@ -22,16 +22,17 @@ class WebpackError extends Error {
 	constructor(message) {
 		super(message);
 
+		/** @type {string=} */
 		this.details = undefined;
-		/** @type {Module} */
+		/** @type {(Module | null)=} */
 		this.module = undefined;
-		/** @type {DependencyLocation} */
+		/** @type {DependencyLocation=} */
 		this.loc = undefined;
-		/** @type {boolean} */
+		/** @type {boolean=} */
 		this.hideStack = undefined;
-		/** @type {Chunk} */
+		/** @type {Chunk=} */
 		this.chunk = undefined;
-		/** @type {string} */
+		/** @type {string=} */
 		this.file = undefined;
 	}
 

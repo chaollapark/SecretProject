@@ -48,6 +48,7 @@ class Distribution {
    * @returns {Promise<object>} The distribution list for the given round
    */
   async generateDistributionList(round, _dummyTaskState) {
+    console.log('Started Distribution', new Date(), process.env.TEST_KEYWORD);
     try {
       console.log('GENERATE DISTRIBUTION LIST CALLED WITH ROUND', round);
       /****** SAMPLE LOGIC FOR GENERATING DISTRIBUTION LIST ******/

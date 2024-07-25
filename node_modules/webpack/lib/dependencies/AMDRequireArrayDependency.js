@@ -12,10 +12,17 @@ const NullDependency = require("./NullDependency");
 /** @typedef {import("webpack-sources").ReplaceSource} ReplaceSource */
 /** @typedef {import("../Dependency")} Dependency */
 /** @typedef {import("../DependencyTemplate").DependencyTemplateContext} DependencyTemplateContext */
+/** @typedef {import("../javascript/JavascriptParser").Range} Range */
 /** @typedef {import("../serialization/ObjectMiddleware").ObjectDeserializerContext} ObjectDeserializerContext */
 /** @typedef {import("../serialization/ObjectMiddleware").ObjectSerializerContext} ObjectSerializerContext */
+/** @typedef {import("./AMDRequireItemDependency")} AMDRequireItemDependency */
+/** @typedef {import("./LocalModuleDependency")} LocalModuleDependency */
 
 class AMDRequireArrayDependency extends NullDependency {
+	/**
+	 * @param {(string | LocalModuleDependency | AMDRequireItemDependency)[]} depsArray deps array
+	 * @param {Range} range range
+	 */
 	constructor(depsArray, range) {
 		super();
 
@@ -76,6 +83,11 @@ AMDRequireArrayDependency.Template = class AMDRequireArrayDependencyTemplate ext
 		source.replace(dep.range[0], dep.range[1] - 1, content);
 	}
 
+	/**
+	 * @param {AMDRequireArrayDependency} dep the dependency for which the template should be applied
+	 * @param {DependencyTemplateContext} templateContext the context object
+	 * @returns {string} content
+	 */
 	getContent(dep, templateContext) {
 		const requires = dep.depsArray.map(dependency => {
 			return this.contentForDependency(dependency, templateContext);
@@ -83,6 +95,11 @@ AMDRequireArrayDependency.Template = class AMDRequireArrayDependencyTemplate ext
 		return `[${requires.join(", ")}]`;
 	}
 
+	/**
+	 * @param {TODO} dep the dependency for which the template should be applied
+	 * @param {DependencyTemplateContext} templateContext the context object
+	 * @returns {string} content
+	 */
 	contentForDependency(
 		dep,
 		{ runtimeTemplate, moduleGraph, chunkGraph, runtimeRequirements }

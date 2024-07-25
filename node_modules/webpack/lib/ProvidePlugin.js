@@ -14,7 +14,11 @@ const ConstDependency = require("./dependencies/ConstDependency");
 const ProvidedDependency = require("./dependencies/ProvidedDependency");
 const { approve } = require("./javascript/JavascriptParserHelpers");
 
+/** @typedef {import("../declarations/WebpackOptions").JavascriptParserOptions} JavascriptParserOptions */
 /** @typedef {import("./Compiler")} Compiler */
+/** @typedef {import("./Dependency").DependencyLocation} DependencyLocation */
+/** @typedef {import("./javascript/JavascriptParser")} JavascriptParser */
+/** @typedef {import("./javascript/JavascriptParser").Range} Range */
 
 const PLUGIN_NAME = "ProvidePlugin";
 
@@ -48,9 +52,16 @@ class ProvidePlugin {
 					ProvidedDependency,
 					new ProvidedDependency.Template()
 				);
+				/**
+				 * @param {JavascriptParser} parser the parser
+				 * @param {JavascriptParserOptions} parserOptions options
+				 * @returns {void}
+				 */
 				const handler = (parser, parserOptions) => {
 					Object.keys(definitions).forEach(name => {
-						const request = [].concat(definitions[name]);
+						const request =
+							/** @type {string[]} */
+							([]).concat(definitions[name]);
 						const splittedName = name.split(".");
 						if (splittedName.length > 0) {
 							splittedName.slice(1).forEach((_, i) => {
@@ -67,9 +78,9 @@ class ProvidePlugin {
 								request[0],
 								nameIdentifier,
 								request.slice(1),
-								expr.range
+								/** @type {Range} */ (expr.range)
 							);
-							dep.loc = expr.loc;
+							dep.loc = /** @type {DependencyLocation} */ (expr.loc);
 							parser.state.module.addDependency(dep);
 							return true;
 						});
@@ -82,9 +93,9 @@ class ProvidePlugin {
 								request[0],
 								nameIdentifier,
 								request.slice(1),
-								expr.callee.range
+								/** @type {Range} */ (expr.callee.range)
 							);
-							dep.loc = expr.callee.loc;
+							dep.loc = /** @type {DependencyLocation} */ (expr.callee.loc);
 							parser.state.module.addDependency(dep);
 							parser.walkExpressions(expr.arguments);
 							return true;

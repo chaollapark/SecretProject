@@ -16,6 +16,7 @@ const NullDependency = require("./NullDependency");
 /** @typedef {import("../DependencyTemplate").DependencyTemplateContext} DependencyTemplateContext */
 /** @typedef {import("../Module")} Module */
 /** @typedef {import("../ModuleGraph")} ModuleGraph */
+/** @typedef {import("../javascript/JavascriptParser").Range} Range */
 /** @typedef {import("../serialization/ObjectMiddleware").ObjectDeserializerContext} ObjectDeserializerContext */
 /** @typedef {import("../serialization/ObjectMiddleware").ObjectSerializerContext} ObjectSerializerContext */
 /** @typedef {import("../util/Hash")} Hash */
@@ -24,13 +25,13 @@ const NullDependency = require("./NullDependency");
 /**
  * @param {ModuleGraph} moduleGraph the module graph
  * @param {Module} module the module
- * @param {string | null} exportName name of the export if any
+ * @param {string[] | null} _exportName name of the export if any
  * @param {string | null} property name of the requested property
  * @param {RuntimeSpec} runtime for which runtime
  * @returns {any} value of the property
  */
-const getProperty = (moduleGraph, module, exportName, property, runtime) => {
-	if (!exportName) {
+const getProperty = (moduleGraph, module, _exportName, property, runtime) => {
+	if (!_exportName) {
 		switch (property) {
 			case "usedExports": {
 				const usedExports = moduleGraph
@@ -47,10 +48,11 @@ const getProperty = (moduleGraph, module, exportName, property, runtime) => {
 			}
 		}
 	}
+	const exportName = /** @type {string[]} */ (_exportName);
 	switch (property) {
 		case "canMangle": {
 			const exportsInfo = moduleGraph.getExportsInfo(module);
-			const exportInfo = exportsInfo.getExportInfo(exportName);
+			const exportInfo = exportsInfo.getReadOnlyExportInfoRecursive(exportName);
 			if (exportInfo) return exportInfo.canMangle;
 			return exportsInfo.otherExportsInfo.canMangle;
 		}
@@ -84,6 +86,11 @@ const getProperty = (moduleGraph, module, exportName, property, runtime) => {
 };
 
 class ExportsInfoDependency extends NullDependency {
+	/**
+	 * @param {Range} range range
+	 * @param {string[] | null} exportName export name
+	 * @param {string | null} property property
+	 */
 	constructor(range, exportName, property) {
 		super();
 		this.range = range;
@@ -102,6 +109,10 @@ class ExportsInfoDependency extends NullDependency {
 		super.serialize(context);
 	}
 
+	/**
+	 * @param {ObjectDeserializerContext} context context
+	 * @returns {ExportsInfoDependency} ExportsInfoDependency
+	 */
 	static deserialize(context) {
 		const obj = new ExportsInfoDependency(
 			context.read(),

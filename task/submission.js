@@ -1,70 +1,62 @@
 const { namespaceWrapper } = require('@_koii/namespace-wrapper');
-const { KoiiStorageClient } = require('@_koii/storage-task-sdk');
-const fs = require('fs');
-
 class Submission {
-  constructor() {}
-
+  /**
+   * Executes your task, optionally storing the result.
+   *
+   * @param {number} round - The current round number
+   * @returns {void}
+   */
   async task(round) {
+    `console.log('Started Task', new Date(), process.env.TEST_KEYWORD)`
     try {
-      console.log('task called with round', round);
-      const newTask = new TwitterCommentBot(process.env.KEYWORD);
-      const newTitles = await newTask.crawl();
-      const cid = await this.storeFile(newTitles);
-      await namespaceWrapper.storeSet("cid", cid);
-      return 'Done';
+      console.log('ROUND', round);
+      const value = 'Hello, World!';
+      // Store the result in NeDB (optional)
+      if (value) {
+        await namespaceWrapper.storeSet('value', value);
+      }
+      // Optional, return your task
+      return value;
     } catch (err) {
-      console.error('ERROR IN EXECUTING TASK', err);
+      console.log('ERROR IN EXECUTING TASK', err);
       return 'ERROR IN EXECUTING TASK' + err;
     }
   }
 
-  async submitTask(roundNumber) {
-    console.log('submitTask called with round', roundNumber);
+  /**
+   * Submits a task for a given round
+   *
+   * @param {number} round - The current round number
+   * @returns {Promise<any>} The submission value that you will use in audit. Ex. cid of the IPFS file
+   */
+  async submitTask(round) {
+    console.log('SUBMIT TASK CALLED ROUND NUMBER', round);
     try {
-      const submission = await this.fetchSubmission(roundNumber);
+      console.log('SUBMIT TASK SLOT', await namespaceWrapper.getSlot());
+      const submission = await this.fetchSubmission(round);
       console.log('SUBMISSION', submission);
-      await namespaceWrapper.checkSubmissionAndUpdateRound(
-        submission,
-        roundNumber,
-      );
-
-      console.log('after the submission call');
+      await namespaceWrapper.checkSubmissionAndUpdateRound(submission, round);
+      console.log('SUBMISSION CHECKED AND ROUND UPDATED');
+      return submission;
     } catch (error) {
-      console.log('error in submission', error);
+      console.log('ERROR IN SUBMISSION', error);
     }
   }
-
-  async storeFile(data, filename = 'dealsData.json') {
-    try {
-      const client = new KoiiStorageClient();
-      const basePath = await namespaceWrapper.getBasePath();
-      fs.writeFileSync(`${basePath}/${filename}`, JSON.stringify(data));
-
-      const userStaking = await namespaceWrapper.getSubmitterAccount();
-
-
-
-      const { cid } = await client.uploadFile(`${basePath}/${filename}`,userStaking);
-
-      console.log(`Stored file CID: ${cid}`);
-      fs.unlinkSync(`${basePath}/${filename}`);
-
-      return cid;
-    } catch (error) {
-      console.error('Failed to upload file to IPFS:', error);
-      fs.unlinkSync(`${basePath}/${filename}`);
-      throw error;
-    }
-  }
-
+  /**
+   * Fetches the submission value
+   *
+   * @param {number} round - The current round number
+   * @returns {Promise<string>} The submission value that you will use in audit. It can be the real value, cid, etc.
+   *
+   */
   async fetchSubmission(round) {
-    console.log('fetchSubmission called with round', round);
-    const cid = await namespaceWrapper.storeGet('cid');
-    console.log('cid', cid);
-    return cid;
+    console.log('Started Submission', new Date(), process.env.TEST_KEYWORD);
+    console.log('FETCH SUBMISSION');
+    // Fetch the value from NeDB
+    const value = await namespaceWrapper.storeGet('value'); // retrieves the value
+    // Return cid/value, etc.
+    return value;
   }
 }
-
 const submission = new Submission();
 module.exports = { submission };

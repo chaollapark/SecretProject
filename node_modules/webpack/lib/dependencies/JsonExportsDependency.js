@@ -28,7 +28,7 @@ const getExportsFromData = data => {
 							canMangle: true,
 							exports: getExportsFromData(item)
 						};
-				  })
+					})
 				: undefined;
 		} else {
 			const exports = [];
@@ -47,7 +47,7 @@ const getExportsFromData = data => {
 
 class JsonExportsDependency extends NullDependency {
 	/**
-	 * @param {JsonData=} data json data
+	 * @param {JsonData} data json data
 	 */
 	constructor(data) {
 		super();

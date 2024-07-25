@@ -25,6 +25,7 @@ const makeSerializable = require("./util/makeSerializable");
 /** @typedef {import("./Module").LibIdentOptions} LibIdentOptions */
 /** @typedef {import("./Module").NeedBuildContext} NeedBuildContext */
 /** @typedef {import("./Module").SourceContext} SourceContext */
+/** @typedef {import("./Module").SourceTypes} SourceTypes */
 /** @typedef {import("./RequestShortener")} RequestShortener */
 /** @typedef {import("./ResolverFactory").ResolverWithOptions} ResolverWithOptions */
 /** @typedef {import("./RuntimeTemplate")} RuntimeTemplate */
@@ -42,6 +43,13 @@ const RUNTIME_REQUIREMENTS = new Set([
 ]);
 
 class DelegatedModule extends Module {
+	/**
+	 * @param {string} sourceRequest source request
+	 * @param {TODO} data data
+	 * @param {"require" | "object"} type type
+	 * @param {string} userRequest user request
+	 * @param {string | Module} originalRequest original request
+	 */
 	constructor(sourceRequest, data, type, userRequest, originalRequest) {
 		super(JAVASCRIPT_MODULE_TYPE_DYNAMIC, null);
 
@@ -51,7 +59,7 @@ class DelegatedModule extends Module {
 		this.delegationType = type;
 		this.userRequest = userRequest;
 		this.originalRequest = originalRequest;
-		/** @type {ManifestModuleData} */
+		/** @type {ManifestModuleData | undefined} */
 		this.delegateData = data;
 
 		// Build info
@@ -59,7 +67,7 @@ class DelegatedModule extends Module {
 	}
 
 	/**
-	 * @returns {Set<string>} types available (do not mutate)
+	 * @returns {SourceTypes} types available (do not mutate)
 	 */
 	getSourceTypes() {
 		return TYPES;
@@ -110,7 +118,8 @@ class DelegatedModule extends Module {
 	 * @returns {void}
 	 */
 	build(options, compilation, resolver, fs, callback) {
-		this.buildMeta = { ...this.delegateData.buildMeta };
+		const delegateData = /** @type {ManifestModuleData} */ (this.delegateData);
+		this.buildMeta = { ...delegateData.buildMeta };
 		this.buildInfo = {};
 		this.dependencies.length = 0;
 		this.delegatedSourceDependency = new DelegatedSourceDependency(
@@ -118,7 +127,7 @@ class DelegatedModule extends Module {
 		);
 		this.addDependency(this.delegatedSourceDependency);
 		this.addDependency(
-			new StaticExportsDependency(this.delegateData.exports || true, false)
+			new StaticExportsDependency(delegateData.exports || true, false)
 		);
 		callback();
 	}
@@ -202,6 +211,10 @@ class DelegatedModule extends Module {
 		super.serialize(context);
 	}
 
+	/**
+	 * @param {ObjectDeserializerContext} context context\
+	 * @returns {DelegatedModule} DelegatedModule
+	 */
 	static deserialize(context) {
 		const { read } = context;
 		const obj = new DelegatedModule(
