@@ -5,10 +5,10 @@ He hates people, let's give him love (and since he FUCKS couches we'll show him 
 
 ## How to Setup
 
-1. Clone this repo
-2. Run `npm install`
-3. Run `npm test` to simulate rounds or `npm run prod-debug` for the live debugger
+1. Go to https://www.koii.network/ and "Get Node";
+2. Run the JD Vance's Couch Task
+3. Give JD Vance some love!!!
 
 ## More info
 
-The extreamly complicated coding stuff can all be found on koiis documentation (which by the way is AMAZING and great to read)
+Soon we'll have more fun tasks to troll people!
