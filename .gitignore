@@ -1,14 +1,41 @@
-dist
-build
-node_modules
-package-lock.json
-migrate.sh
-*/dev.js
-data/*
-executables/*
-namespace/*
-config/*
-.env.local
+# Directories
+dist/
+build/
+node_modules/
+data/
+executables/
+namespace/
+config/
+
+# Environment files
 .env
+.env.local
+
+# Logs and databases
 taskStateInfoKeypair.json
+localKOIIDB
+my_test_db
+twitter-db
 localKOIIDB.db
+puppeteer_cache_koii_twitter_archive
+adapters/twitter/puppeteer_cache_koii_twitter_ck_archive
+adapters/twitter/puppeteer_cache_koii_twitter_archive
+adapters/twitter/puppeteer_cache_koii_twitter_archive_audit
+
+# OS and IDE files
+.DS_Store
+
+# Scripts
+migrate.sh
+
+# Specific files
+package-lock.json
+tests/test-get-json-cid.js
+data.json
+dataList.json
+bodyHTML.html
+passwordHTML.html 
+usernameHTML.html
+
+# Patterns
+*/dev.js
