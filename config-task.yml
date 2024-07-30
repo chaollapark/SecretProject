@@ -12,7 +12,7 @@ task_executable_network: 'IPFS'
 task_audit_program: 'dist/main.js'
 
 # Total round time of your task : it must be given in slots and each slot is roughly equal to 408ms
-round_time: 15075000
+round_time: 33500
 
 audit_window: 5000
 submission_window: 5000
@@ -56,10 +56,10 @@ requirementsTags:
     value: '5 GB'
 
 # OPTIONAL Only provide the taskId if you are updating the task otherwise leave blank
-task_id: ''
+task_id: 'FcKu3tyAqnkHzmdN7UWNz3Cc79PT8f8dA3A2AzXNhnsN'
 
 # Provide the description for changes made in new version of task
-migrationDescription: ''
+migrationDescription: 'update the time'
 # - type: TASK_VARIABLE
 #   value: 'TWITTER_PROFILE'
 #   description: 'User name of the profile where you need to post the comment.'
