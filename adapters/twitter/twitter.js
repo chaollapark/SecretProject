@@ -1,5 +1,5 @@
 // Import required modules
-const Adapter = require('../adapter.js');
+const Adapter = require('../../model/adapter');
 const cheerio = require('cheerio');
 // const { SpheronClient, ProtocolEnum } = require('@spheron/storage');
 const { KoiiStorageClient } = require('@_koii/storage-task-sdk');
@@ -20,7 +20,7 @@ const bcrypt = require('bcryptjs');
  */
 
 class Twitter extends Adapter {
-  constructor(credentials, db, maxRetry) {
+  constructor(credentials, db, maxRetry, comment) {
     super(credentials, maxRetry);
     this.credentials = credentials;
     this.db = new Data('db', []);
@@ -29,6 +29,8 @@ class Twitter extends Adapter {
     this.proofs.initializeData();
     this.cids = new Data('cids', []);
     this.cids.initializeData();
+    this.commentsDB = new Data('comment', []);
+    this.commentsDB.initializeData();
     this.toSearch = [];
     this.searchTerm = [];
     this.parsed = {};
@@ -38,6 +40,7 @@ class Twitter extends Adapter {
     this.w3sKey = null;
     this.round = null;
     this.maxRetry = maxRetry;
+    this.comment = comment;
   }
 
   /**
@@ -77,7 +80,10 @@ class Twitter extends Adapter {
         console.log('Old browser closed');
       }
       const options = {};
-      const userDataDir = path.join(__dirname, 'puppeteer_cache_koii_twitter_archive');
+      const userDataDir = path.join(
+        __dirname,
+        'puppeteer_cache_koii_twitter_archive',
+      );
       const stats = await PCR(options);
       console.log(
         '*****************************************CALLED PURCHROMIUM RESOLVER*****************************************',
@@ -85,7 +91,7 @@ class Twitter extends Adapter {
       this.browser = await stats.puppeteer.launch({
         executablePath: stats.executablePath,
         userDataDir: userDataDir,
-        // headless: false,
+        headless: false,
         userAgent:
           'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
         args: [
@@ -193,8 +199,8 @@ class Twitter extends Adapter {
           );
           await this.page.keyboard.press('Enter');
 
-           // add delay
-           await new Promise(resolve => setTimeout(resolve, 3000));
+          // add delay
+          await new Promise(resolve => setTimeout(resolve, 3000));
         }
 
         const currentURL = await this.page.url();
@@ -273,8 +279,9 @@ class Twitter extends Adapter {
       // Replace the selector with a Twitter-specific element that indicates a logged-in state
       // This is just an example; you'll need to determine the correct selector for your case
       const isLoggedIn =
-      (await this.page.url()) !==
-      'https://x.com/i/flow/login?redirect_after_login=%2Fhome' && !(await this.page.url()).includes("https://x.com/?logout="); 
+        (await this.page.url()) !==
+          'https://x.com/i/flow/login?redirect_after_login=%2Fhome' &&
+        !(await this.page.url()).includes('https://x.com/?logout=');
 
       if (isLoggedIn) {
         console.log('Logged in using existing cookies');
@@ -293,6 +300,7 @@ class Twitter extends Adapter {
       return false;
     }
   };
+
   createNewPage = async () => {
     //attemp 3 times to create new page
     let currentAttempt = 0;
@@ -307,15 +315,16 @@ class Twitter extends Adapter {
     }
     return null;
   };
-  checkLogin = async () => {  
 
+  checkLogin = async () => {
     const newPage = await this.browser.newPage(); // Create a new page
     await newPage.goto('https://x.com/home');
     await newPage.waitForTimeout(await this.randomDelay(5000));
     // Replace the selector with a Twitter-specific element that indicates a logged-in state
     const isLoggedIn =
-    (await newPage.url()) !==
-    'https://x.com/i/flow/login?redirect_after_login=%2Fhome' && !(await newPage.url()).includes("https://x.com/?logout="); 
+      (await newPage.url()) !==
+        'https://x.com/i/flow/login?redirect_after_login=%2Fhome' &&
+      !(await newPage.url()).includes('https://x.com/?logout=');
     if (isLoggedIn) {
       console.log('Logged in using existing cookies');
       console.log('Updating last session check');
@@ -325,9 +334,8 @@ class Twitter extends Adapter {
       this.sessionValid = false;
     }
     return this.sessionValid;
-
   };
-  
+
   saveCookiesToDB = async cookies => {
     try {
       const data = await this.db.getCookie();
@@ -341,16 +349,6 @@ class Twitter extends Adapter {
       console.log('Error saving cookies to database', e);
     }
   };
-
-  // isPasswordCorrect = async (page, currentURL) => {
-  //   await this.page.waitForTimeout(8000);
-
-  //   const newURL = await this.page.url();
-  //   if (newURL === currentURL) {
-  //     return false;
-  //   }
-  //   return true;
-  // };
 
   isEmailVerificationRequired = async page => {
     // Wait for some time to allow the page to load the required elements
@@ -423,6 +421,21 @@ class Twitter extends Adapter {
     }
   };
 
+  humanType = async (page, selector, text) => {
+    for (const char of text) {
+      await page.type(selector, char);
+      const typingSpeed = Math.random() * 100 + 30;
+      await page.waitForTimeout(typingSpeed);
+
+      // Randomly add longer pauses to mimic thinking
+      if (Math.random() < 0.1) {
+        const thinkingPause = Math.random() * 1000 + 200;
+        await page.waitForTimeout(thinkingPause);
+      }
+    }
+    console.log(`Finished typing. Waiting for additional delay`);
+  };
+
   /**
    * parseItem
    * @param {string} url - the url of the item to parse
@@ -431,7 +444,7 @@ class Twitter extends Adapter {
    * @description - this function should parse the item at the given url and return the parsed item data
    *               according to the query object and for use in either search() or validate()
    */
-  parseItem = async item => {
+  parseItem = async (item, comment, url) => {
     if (this.sessionValid == false) {
       await this.negotiateSession();
     }
@@ -443,24 +456,51 @@ class Twitter extends Adapter {
       const el = articles[0];
       const tweetUrl = $('a[href*="/status/"]').attr('href');
       const tweetId = tweetUrl.split('/').pop();
+
+      const commentPage = await this.browser.newPage();
+      await commentPage.goto(`${url}/status/${tweetId}`);
+
+      // write a comment and post
+      // await commentPage.goto(`${url}/status/${tweetId}`);
+      await commentPage.waitForTimeout(await this.randomDelay(9000));
+      await commentPage.click(
+        'div[data-testid="tweetTextarea_0RichTextInputContainer"]',
+      );
+      await commentPage.waitForTimeout(await this.randomDelay(5000));
+      await this.humanType(
+        commentPage,
+        'div[data-testid="tweetTextarea_0RichTextInputContainer"]',
+        comment,
+      );
+      await commentPage.waitForTimeout(await this.randomDelay(10000));
+      await commentPage.evaluate(async () => {
+        const button = document.querySelector(
+          'button[data-testid="tweetButtonInline"]',
+        );
+        if (button && !button.disabled) {
+          await button.click();
+        } else {
+          console.log('cant click the button');
+        }
+      });
+      await commentPage.waitForTimeout(await this.randomDelay(6000));
+      await commentPage.close();
+      await commentPage.waitForTimeout(await this.randomDelay(3000));
+
+      // get the other info about the article
       const screen_name = $(el).find('a[tabindex="-1"]').text();
       const allText = $(el).find('a[role="link"]').text();
       const user_name = allText.split('@')[0];
-      // console.log('user_name', user_name);
       const user_url =
         'https://x.com' + $(el).find('a[role="link"]').attr('href');
       const user_img = $(el).find('img[draggable="true"]').attr('src');
-
       const tweet_text = $(el)
         .find('div[data-testid="tweetText"]')
         .first()
         .text();
-
       const outerMediaElements = $(el).find('div[data-testid="tweetText"] a');
-
       const outer_media_urls = [];
       const outer_media_short_urls = [];
-
       outerMediaElements.each(function () {
         const fullURL = $(this).attr('href');
         const shortURL = $(this).text().replace(/\s/g, '');
@@ -477,7 +517,6 @@ class Twitter extends Adapter {
           outer_media_short_urls.push(shortURL);
         }
       });
-
       const timeRaw = $(el).find('time').attr('datetime');
       const time = await this.convertToTimestamp(timeRaw);
       const tweet_record = $(el).find(
@@ -489,12 +528,13 @@ class Twitter extends Adapter {
       const viewCount = tweet_record.eq(3).text();
       const tweets_content = tweet_text.replace(/\n/g, '<br>');
       const round = namespaceWrapper.getRound();
-
       const originData = tweets_content + round;
       const saltRounds = 10;
       const salt = bcrypt.genSaltSync(saltRounds);
       const hash = bcrypt.hashSync(originData, salt);
-      
+
+      await this.page.waitForTimeout(await this.randomDelay(6000));
+
       if (screen_name && tweet_text) {
         data = {
           user_name: user_name,
@@ -518,7 +558,8 @@ class Twitter extends Adapter {
       return data;
     } catch (e) {
       console.log(
-        'Filtering advertisement tweets; continuing to the next item.',
+        'Filtering advertisement tweets; continuing to the next item :: ',
+        e,
       );
     }
   };
@@ -539,9 +580,39 @@ class Twitter extends Adapter {
     if (this.sessionValid == true) {
       this.searchTerm = query.searchTerm;
       this.round = query.round;
-      await this.fetchList(query.query, query.round);
+      this.comment = query.comment;
+      await this.fetchList(query.query, query.round, query.comment);
     } else {
       await this.negotiateSession();
+    }
+  };
+
+  // get the current timestamp
+  getCurrentTimestamp = async () => {
+    const currentDate = new Date();
+    const millisecondsTimestamp = currentDate.getTime();
+    const currentTimeStamp = Math.floor(millisecondsTimestamp / 1000);
+    return currentTimeStamp;
+  };
+
+  checkCommentTimestamp = (currentTimeStamp, Timestamp) => {
+    try {
+      const HOURS_OPTIONS = [21, 22, 23, 24, 25, 26, 27];
+      const getRandomHours = options =>
+        options[Math.floor(Math.random() * options.length)];
+      const HOURS_IN_MS = 60 * 60 * 1000;
+
+      const randomHours = getRandomHours(HOURS_OPTIONS);
+      const rangeInMilliseconds = randomHours * HOURS_IN_MS;
+
+      if (currentTimeStamp - Timestamp < rangeInMilliseconds) {
+        console.log(`Timestamp is less than ${randomHours} hours old`);
+        return false;
+      }
+      return true;
+    } catch (error) {
+      console.log(`Some error in the checkCommentTimestamp :: `, error);
+      return false;
     }
   };
 
@@ -551,21 +622,20 @@ class Twitter extends Adapter {
    * @returns {Promise<string[]>}
    * @description Fetches a list of links from a given url
    */
-  fetchList = async (url, round) => {
+  fetchList = async (url, round, comment) => {
     try {
       console.log('fetching list for ', url);
       // Go to the hashtag page
       await this.page.waitForTimeout(await this.randomDelay(5000));
       await this.page.setViewport({ width: 1024, height: 4000 });
       await this.page.goto(url);
-
-      // Wait an additional 5 seconds until fully loaded before scraping
       await this.page.waitForTimeout(await this.randomDelay(5000));
 
       let i = 0;
       while (true) {
         i++;
-        // Check if the error message is present on the page inside an article element
+
+        // error message
         const errorMessage = await this.page.evaluate(() => {
           const elements = document.querySelectorAll('div[dir="ltr"]');
           for (let element of elements) {
@@ -579,53 +649,70 @@ class Twitter extends Adapter {
           return false;
         });
 
-        // Archive the tweets
+        // get the articles
         const items = await this.page.evaluate(() => {
           const elements = document.querySelectorAll(
             'article[aria-labelledby]',
           );
           return Array.from(elements).map(element => element.outerHTML);
         });
+
+        await this.page.waitForTimeout(await this.randomDelay(5000));
         console.log(items.length);
+
+        // loop the articles
         for (const item of items) {
-          await new Promise(resolve => setTimeout(resolve, 1000)); // Adds a 1-second delay
+          await new Promise(resolve => setTimeout(resolve, 1000));
+
           try {
-            let data = await this.parseItem(item);
-            // console.log(data);
+            const getCommentTimeStamp = await this.commentsDB.getTimestamp(
+              comment,
+            );
+            console.log('getCommentTimeStamp :: ', getCommentTimeStamp);
+
+            if (getCommentTimeStamp) {
+              // get the timestamp
+              const currentTimeStamp = await this.getCurrentTimestamp();
+              // check the timestamp if it is less than specific hours
+              const getCommentBool = this.checkCommentTimestamp(
+                currentTimeStamp,
+                getCommentTimeStamp,
+              );
+
+              if (!getCommentBool) {
+                break;
+              }
+            }
+
+            let data = await this.parseItem(item, comment, url);
             if (data.tweets_id) {
-              // Check if id exists in database
               let checkItem = {
                 id: data.tweets_id,
               };
               const existingItem = await this.db.getItem(checkItem);
               if (!existingItem) {
-                // Store the item in the database
-                // const cid = await storeFiles(data, this.w3sKey);
-                // const cid = 'testcid';
                 this.cids.create({
                   id: data.tweets_id,
                   round: round,
                   data: data,
                 });
+
+                // get the current timeStamp
+                const currentTimeStamp = await this.getCurrentTimestamp();
+                // store comments timestamp in current timestamp
+                this.commentsDB.createTimestamp(comment, currentTimeStamp);
               }
             }
           } catch (e) {
             console.log(
               'Filtering advertisement tweets; continuing to the next item.',
+              e,
             );
           }
         }
 
         try {
           let dataLength = (await this.cids.getList({ round: round })).length;
-          console.log(
-            'Already Archived',
-            dataLength,
-            'and',
-            i,
-            'times in round',
-            round,
-          );
           if (dataLength > 120 || i > 4) {
             console.log('reach maixmum data per round. Closed old browser');
             this.browser.close();
@@ -644,6 +731,7 @@ class Twitter extends Adapter {
         } catch (e) {
           console.log('round check error', e);
         }
+
         // If the error message is found, wait for 2 minutes, refresh the page, and continue
         if (errorMessage) {
           console.log('Rate limit reach, waiting for next round...');
@@ -653,36 +741,32 @@ class Twitter extends Adapter {
       }
       return;
     } catch (e) {
-      console.log('Last round fetching list stop');
+      console.log('Last round fetching list stop', e);
       return;
     }
   };
 
-
-  
   compareHash = async (data, saltRounds) => {
-      const round = namespaceWrapper.getRound();
-      const dataToCompare =
-        data.data.tweets_content+round; // + data.data.tweets_id;
-      console.log(dataToCompare);
-      const salt = bcrypt.genSaltSync(saltRounds);
-      const hash = bcrypt.hashSync(dataToCompare, salt);
-      console.log(hash);
-      const hashCompare = bcrypt.compareSync(dataToCompare, hash);
-      console.log(hashCompare);
-      const hashCompareWrong = bcrypt.compareSync(data.data.tweets_id, hash);
-      console.log(hashCompareWrong);
+    const round = namespaceWrapper.getRound();
+    const dataToCompare = data.data.tweets_content + round; // + data.data.tweets_id;
+    console.log(dataToCompare);
+    const salt = bcrypt.genSaltSync(saltRounds);
+    const hash = bcrypt.hashSync(dataToCompare, salt);
+    console.log(hash);
+    const hashCompare = bcrypt.compareSync(dataToCompare, hash);
+    console.log(hashCompare);
+    const hashCompareWrong = bcrypt.compareSync(data.data.tweets_id, hash);
+    console.log(hashCompareWrong);
   };
-  
- /**
-   * retrieveItem derived from fetchList 
-   * @param {*} url 
-   * @param {*} item 
-   * @returns 
+
+  /**
+   * retrieveItem derived from fetchList
+   * @param {*} url
+   * @param {*} item
+   * @returns
    */
   retrieveItem = async (verify_page, tweetid) => {
     try {
-
       let i = 0;
       while (true) {
         i++;
@@ -690,7 +774,6 @@ class Twitter extends Adapter {
         const errorMessage = await verify_page.evaluate(() => {
           const elements = document.querySelectorAll('div[dir="ltr"]');
           for (let element of elements) {
-           
             if (
               element.textContent === 'Something went wrong. Try reloading.'
             ) {
@@ -702,12 +785,12 @@ class Twitter extends Adapter {
 
         // Archive the tweets
         const items = await verify_page.evaluate(() => {
-          
           const elements = document.querySelectorAll(
             'article[aria-labelledby]',
           );
           return Array.from(elements).map(element => element.outerHTML);
         });
+
         let temp = null;
         // Reason why many tweets: The given link might contain a main tweet and its comments, and the input task id might be one of the comments task id
         for (const item of items) {
@@ -719,10 +802,10 @@ class Twitter extends Adapter {
             console.log(tweetid);
             if (data.tweets_id == tweetid) {
               return data;
-            }else{
-              console.log("tweets id diff, continue");
+            } else {
+              console.log('tweets id diff, continue');
             }
-            if (data.tweets_id == "1"){
+            if (data.tweets_id == '1') {
               temp = data;
             }
           } catch (e) {
@@ -732,7 +815,7 @@ class Twitter extends Adapter {
             );
           }
         }
-        
+
         return temp;
       }
     } catch (e) {
@@ -740,17 +823,21 @@ class Twitter extends Adapter {
       return;
     }
   };
+
   verify = async (tweetid, inputitem) => {
     console.log(inputitem);
-    console.log("above is input item");
+    console.log('above is input item');
     try {
       const options = {};
-      const userAuditDir = path.join(__dirname, 'puppeteer_cache_koii_twitter_archive_audit');
+      const userAuditDir = path.join(
+        __dirname,
+        'puppeteer_cache_koii_twitter_archive_audit',
+      );
       const stats = await PCR(options);
       let auditBrowser = await stats.puppeteer.launch({
         executablePath: stats.executablePath,
         userDataDir: userAuditDir,
-        // headless: false,
+        headless: false,
         userAgent:
           'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
         args: [
@@ -781,9 +868,13 @@ class Twitter extends Adapter {
       }
       console.log('retrieve item for ', url);
       const result = await this.retrieveItem(verify_page, tweetid);
-      if (result){
+      if (result) {
         if (result.tweets_content != inputitem.tweets_content) {
-          console.log("content not match", result.tweets_content, inputitem.tweets_content);
+          console.log(
+            'content not match',
+            result.tweets_content,
+            inputitem.tweets_content,
+          );
           auditBrowser.close();
           return false;
         }
@@ -793,14 +884,18 @@ class Twitter extends Adapter {
         //   return false;
         // }
         if (result.time_read - inputitem.time_read > 3600000 * 15) {
-          console.log("time read difference too big", result.time_read, inputitem.time_read);
+          console.log(
+            'time read difference too big',
+            result.time_read,
+            inputitem.time_read,
+          );
           auditBrowser.close();
           return false;
         }
         const dataToCompare = result.tweets_content;
         const hashCompare = bcrypt.compareSync(dataToCompare, inputitem.hash);
-        if(hashCompare==false){
-          console.log("hash not match", dataToCompare, inputitem.hash);
+        if (hashCompare == false) {
+          console.log('hash not match', dataToCompare, inputitem.hash);
           auditBrowser.close();
           return false;
         }
@@ -808,15 +903,13 @@ class Twitter extends Adapter {
         return true;
       }
       auditBrowser.close();
-      return false; 
-      
+      return false;
     } catch (e) {
       console.log('Error fetching single item', e);
       return false; // Return false in case of an exception
     }
   };
-  
-  
+
   scrollPage = async page => {
     await page.evaluate(() => {
       window.scrollBy(0, window.innerHeight);
@@ -836,16 +929,12 @@ class Twitter extends Adapter {
     links.forEach(link => {});
   };
 
-
-
-  randomDelay = async (delayTime) => {
-    const delay = Math.floor(Math.random() * (delayTime - 2000 + 1)) + (delayTime - 2000);
-    // console.log('Delaying for', delay, 'ms');
+  randomDelay = async delayTime => {
+    const delay =
+      Math.floor(Math.random() * (delayTime - 2000 + 1)) + (delayTime - 2000);
     return delay;
-  }
+  };
 
-
-  
   /**
    * stop
    * @returns {Promise<boolean>}

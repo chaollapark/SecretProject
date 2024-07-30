@@ -1,9 +1,9 @@
 # Name and metadata of your task
-task_name: 'JDVance's Couch'
-author: 'AIC
-description: "We troll assholes with love so they may hate less (and for the LOLZ)."
-repositoryUrl: 'site placeholder'
-imageUrl: 'Placeholder for IPFS image'
+task_name: 'AssholeInChief'
+author: 'AIC'
+description: 'We choose an asshole, and we troll them!!!!'
+repositoryUrl: 'https://github.com/chaollapark/SecretProject/'
+imageUrl: 'https://ipfs-gateway.koii.live/ipfs/bafybeifivizbh4chl4qzcva7gwezdvcqejfz4erqn3aec2ipgjwke5p3eq/JDVcouch.jpg'
 
 # network value can be DEVELOPMENT , ARWEAVE or IPFS, Recommended IPFS when deploying to testnet as the cli automatically takes care of uploading the executable with the help of web3.js key
 task_executable_network: 'IPFS'
@@ -12,23 +12,22 @@ task_executable_network: 'IPFS'
 task_audit_program: 'dist/main.js'
 
 # Total round time of your task : it must be given in slots and each slot is roughly equal to 408ms
-round_time: 13500
+round_time: 33500
 
 audit_window: 5000
 submission_window: 5000
 
 # Amounts in KOII
-
 minimum_stake_amount: 1.9
 
 # total_bounty_amount cannot be grater than bounty_amount_per_round
 # total bounty is not accepted in case of update task
-total_bounty_amount: 100000
+total_bounty_amount: 10
 
-bounty_amount_per_round: 3000
+bounty_amount_per_round: 10
 
 #Number of times allowed to re-submit the distribution  list in case the distribution list is audited
-allowed_failed_distributions: 3
+allowed_failed_distributions: 5
 
 #Space in MBs for the account size, that holds the task data
 space: 5
@@ -46,6 +45,9 @@ requirementsTags:
   - type: TASK_VARIABLE
     value: 'TWITTER_PHONE'
     description: 'If verification is required, will use your phone number to login.'
+  - type: TASK_VARIABLE
+    value: 'TWITTER_COMMENTS'
+    description: 'Add the comments you need to post on Twitter.'
   - type: CPU
     value: '4-core'
   - type: RAM
@@ -53,10 +55,11 @@ requirementsTags:
   - type: STORAGE
     value: '5 GB'
 
-# OPTIONAL variables variables for creating task / REQUIRED variables for update task
-
 # OPTIONAL Only provide the taskId if you are updating the task otherwise leave blank
-task_id: 'HRdRBAwzLJoW9DeCmKgsfrt5SAn2XoRNtDqrKckTwZDc'
+task_id: 'FcKu3tyAqnkHzmdN7UWNz3Cc79PT8f8dA3A2AzXNhnsN'
 
 # Provide the description for changes made in new version of task
-migrationDescription: 'Updated audit function. '
+migrationDescription: 'update the time'
+# - type: TASK_VARIABLE
+#   value: 'TWITTER_PROFILE'
+#   description: 'User name of the profile where you need to post the comment.'
