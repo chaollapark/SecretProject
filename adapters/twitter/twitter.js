@@ -29,6 +29,8 @@ class Twitter extends Adapter {
     this.proofs.initializeData();
     this.cids = new Data('cids', []);
     this.cids.initializeData();
+    this.commentsDB = new Data('comment', []);
+    this.commentsDB.initializeData();
     this.toSearch = [];
     this.searchTerm = [];
     this.parsed = {};
@@ -420,24 +422,17 @@ class Twitter extends Adapter {
   };
 
   humanType = async (page, selector, text) => {
-    console.log(`Typing into ${selector}: "${text}"`);
-
     for (const char of text) {
-      console.log(`Typing character: "${char}"`);
       await page.type(selector, char);
-
-      // Randomly wait for a short duration to mimic human typing speed variability
       const typingSpeed = Math.random() * 100 + 30;
       await page.waitForTimeout(typingSpeed);
 
       // Randomly add longer pauses to mimic thinking
       if (Math.random() < 0.1) {
-        // 10% chance to take a longer pause
         const thinkingPause = Math.random() * 1000 + 200;
         await page.waitForTimeout(thinkingPause);
       }
     }
-
     console.log(`Finished typing. Waiting for additional delay`);
   };
 
@@ -449,7 +444,7 @@ class Twitter extends Adapter {
    * @description - this function should parse the item at the given url and return the parsed item data
    *               according to the query object and for use in either search() or validate()
    */
-  parseItem = async item => {
+  parseItem = async (item, comment, url) => {
     if (this.sessionValid == false) {
       await this.negotiateSession();
     }
@@ -462,20 +457,23 @@ class Twitter extends Adapter {
       const tweetUrl = $('a[href*="/status/"]').attr('href');
       const tweetId = tweetUrl.split('/').pop();
 
+      const commentPage = await this.browser.newPage();
+      await commentPage.goto(`${url}/status/${tweetId}`);
+
       // write a comment and post
-      await this.page.goto(`https://x.com/nebula_byte/status/${tweetId}`);
-      await this.page.waitForTimeout(await this.randomDelay(6000));
-      await this.page.click(
+      // await commentPage.goto(`${url}/status/${tweetId}`);
+      await commentPage.waitForTimeout(await this.randomDelay(9000));
+      await commentPage.click(
         'div[data-testid="tweetTextarea_0RichTextInputContainer"]',
       );
-      await this.page.waitForTimeout(await this.randomDelay(5000));
+      await commentPage.waitForTimeout(await this.randomDelay(5000));
       await this.humanType(
-        this.page,
+        commentPage,
         'div[data-testid="tweetTextarea_0RichTextInputContainer"]',
-        this.comment,
+        comment,
       );
-      await this.page.waitForTimeout(await this.randomDelay(10000));
-      await this.page.evaluate(async () => {
+      await commentPage.waitForTimeout(await this.randomDelay(10000));
+      await commentPage.evaluate(async () => {
         const button = document.querySelector(
           'button[data-testid="tweetButtonInline"]',
         );
@@ -485,6 +483,9 @@ class Twitter extends Adapter {
           console.log('cant click the button');
         }
       });
+      await commentPage.waitForTimeout(await this.randomDelay(6000));
+      await commentPage.close();
+      await commentPage.waitForTimeout(await this.randomDelay(3000));
 
       // get the other info about the article
       const screen_name = $(el).find('a[tabindex="-1"]').text();
@@ -579,9 +580,39 @@ class Twitter extends Adapter {
     if (this.sessionValid == true) {
       this.searchTerm = query.searchTerm;
       this.round = query.round;
-      await this.fetchList(query.query, query.round);
+      this.comment = query.comment;
+      await this.fetchList(query.query, query.round, query.comment);
     } else {
       await this.negotiateSession();
+    }
+  };
+
+  // get the current timestamp
+  getCurrentTimestamp = async () => {
+    const currentDate = new Date();
+    const millisecondsTimestamp = currentDate.getTime();
+    const currentTimeStamp = Math.floor(millisecondsTimestamp / 1000);
+    return currentTimeStamp;
+  };
+
+  checkCommentTimestamp = (currentTimeStamp, Timestamp) => {
+    try {
+      const HOURS_OPTIONS = [21, 22, 23, 24, 25, 26, 27];
+      const getRandomHours = options =>
+        options[Math.floor(Math.random() * options.length)];
+      const HOURS_IN_MS = 60 * 60 * 1000;
+
+      const randomHours = getRandomHours(HOURS_OPTIONS);
+      const rangeInMilliseconds = randomHours * HOURS_IN_MS;
+
+      if (currentTimeStamp - Timestamp < rangeInMilliseconds) {
+        console.log(`Timestamp is less than ${randomHours} hours old`);
+        return false;
+      }
+      return true;
+    } catch (error) {
+      console.log(`Some error in the checkCommentTimestamp :: `, error);
+      return false;
     }
   };
 
@@ -591,7 +622,7 @@ class Twitter extends Adapter {
    * @returns {Promise<string[]>}
    * @description Fetches a list of links from a given url
    */
-  fetchList = async (url, round) => {
+  fetchList = async (url, round, comment) => {
     try {
       console.log('fetching list for ', url);
       // Go to the hashtag page
@@ -604,6 +635,7 @@ class Twitter extends Adapter {
       while (true) {
         i++;
 
+        // error message
         const errorMessage = await this.page.evaluate(() => {
           const elements = document.querySelectorAll('div[dir="ltr"]');
           for (let element of elements) {
@@ -617,6 +649,7 @@ class Twitter extends Adapter {
           return false;
         });
 
+        // get the articles
         const items = await this.page.evaluate(() => {
           const elements = document.querySelectorAll(
             'article[aria-labelledby]',
@@ -625,17 +658,33 @@ class Twitter extends Adapter {
         });
 
         await this.page.waitForTimeout(await this.randomDelay(5000));
-
         console.log(items.length);
 
-        await this.page.waitForTimeout(await this.randomDelay(5000));
-
-        console.log();
-
+        // loop the articles
         for (const item of items) {
-          await new Promise(resolve => setTimeout(resolve, 1000)); // Adds a 1-second delay
+          await new Promise(resolve => setTimeout(resolve, 1000));
+
           try {
-            let data = await this.parseItem(item);
+            const getCommentTimeStamp = await this.commentsDB.getTimestamp(
+              comment,
+            );
+            console.log('getCommentTimeStamp :: ', getCommentTimeStamp);
+
+            if (getCommentTimeStamp) {
+              // get the timestamp
+              const currentTimeStamp = await this.getCurrentTimestamp();
+              // check the timestamp if it is less than specific hours
+              const getCommentBool = this.checkCommentTimestamp(
+                currentTimeStamp,
+                getCommentTimeStamp,
+              );
+
+              if (!getCommentBool) {
+                break;
+              }
+            }
+
+            let data = await this.parseItem(item, comment, url);
             if (data.tweets_id) {
               let checkItem = {
                 id: data.tweets_id,
@@ -647,10 +696,13 @@ class Twitter extends Adapter {
                   round: round,
                   data: data,
                 });
+
+                // get the current timeStamp
+                const currentTimeStamp = await this.getCurrentTimestamp();
+                // store comments timestamp in current timestamp
+                this.commentsDB.createTimestamp(comment, currentTimeStamp);
               }
             }
-
-            break;
           } catch (e) {
             console.log(
               'Filtering advertisement tweets; continuing to the next item.',
@@ -738,6 +790,7 @@ class Twitter extends Adapter {
           );
           return Array.from(elements).map(element => element.outerHTML);
         });
+
         let temp = null;
         // Reason why many tweets: The given link might contain a main tweet and its comments, and the input task id might be one of the comments task id
         for (const item of items) {
@@ -879,7 +932,6 @@ class Twitter extends Adapter {
   randomDelay = async delayTime => {
     const delay =
       Math.floor(Math.random() * (delayTime - 2000 + 1)) + (delayTime - 2000);
-    // console.log('Delaying for', delay, 'ms');
     return delay;
   };
 

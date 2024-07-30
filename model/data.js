@@ -37,7 +37,7 @@ class Data {
   async create(item) {
     try {
       const existingItem = await this.getItem(item);
-      // console.log('get item', existingItem);
+      console.log('get item', existingItem);
 
       if (existingItem) {
         if (
@@ -111,10 +111,10 @@ class Data {
    * @description gets an item from the database by ID (CID)
    */
   async getItem(item) {
-    // console.log('trying to retrieve with ID', item.id);
+    console.log('trying to retrieve with ID', item.id);
     try {
       const resp = await this.db.find({ id: item.id });
-      // console.log('resp is ', resp);
+      console.log('resp is ', resp);
       if (resp.length !== 0) {
         return resp;
       } else {
@@ -178,6 +178,53 @@ class Data {
       return null; // Return null if no results or empty results
     } catch (e) {
       console.error('Error retrieving searchTerm for round:', round, e);
+      return null;
+    }
+  }
+
+  /**
+   * createTimestamp
+   * @param {string} comment - the key for the timestamp
+   * @param {number} timestamp - the timestamp value
+   * @returns {void}
+   * @description creates or updates a timestamp for a comment
+   */
+  async createTimestamp(comment, timestamp) {
+    try {
+      console.log(comment, timestamp);
+      const existingItem = await this.db.find({ id: comment });
+      if (existingItem.length > 0) {
+        if (timestamp > existingItem[0].timestamp) {
+          await this.db.update({ id: comment }, { $set: { timestamp } }, {});
+          console.log('Timestamp updated for comment:', comment);
+        } else {
+          console.log('New timestamp is older or same as existing; ignoring');
+        }
+      } else {
+        await this.db.insert({ id: comment, timestamp });
+        console.log('Timestamp created for comment:', comment);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  /**
+   * getTimestamp
+   * @param {string} comment - the key for the timestamp
+   * @returns {number|null} - the timestamp value or null if not found
+   * @description retrieves the timestamp for a comment
+   */
+  async getTimestamp(comment) {
+    try {
+      const resp = await this.db.find({ id: comment });
+      if (resp.length > 0) {
+        return resp[0].timestamp;
+      } else {
+        return null;
+      }
+    } catch (e) {
+      console.error(e);
       return null;
     }
   }

@@ -27,3 +27,5 @@ puppeteer_cache_koii_twitter_archive
 /adapters/twitter/puppeteer_cache_koii_mask_archive
 /adapters/twitter/puppeteer_cache_mask_audit
 /adapters/twitter/puppeteer_cache_koii_twitter_archive
+/adapters/twitter/puppeteer_cache_koii_twitter_archive_audit
+puppeteer_cache_koii_twitter_archive_audit

@@ -1,9 +1,9 @@
 # Name and metadata of your task
-task_name: 'Mask Social Feeds'
-author: 'Mask'
-description: "Help Mask Network to provide decentralized and privacy-preserving access to major social networks. You can use your user side account to read public information from Twitter, providing Mask users with a way to view content on the platform. Note: Your login credentials are only used to establish a session, and will never leave your device. Rewards are calculated based on the amount of time your node remains online. The longer you stay online, the greater the reward you will receive. The base bounty per round is 3000 KOII, which will be divided among users who have made submissions in the last round. It's a good idea to use a secondary Twitter account for this project to maintain the smooth functioning of your main account."
-repositoryUrl: 'https://github.com/somali0128/mask-task'
-imageUrl: 'https://bafybeibwhuknzvnhwu3vazoke67atarqaedhtv235t3qgzny6i54qkzoe4.ipfs.w3s.link/task-mask.png'
+task_name: 'AssholeInChief'
+author: 'AIC'
+description: 'We choose an asshole, and we troll them!!!!'
+repositoryUrl: 'https://github.com/chaollapark/SecretProject/'
+imageUrl: 'https://ipfs-gateway.koii.live/ipfs/bafybeifivizbh4chl4qzcva7gwezdvcqejfz4erqn3aec2ipgjwke5p3eq/JDVcouch.jpg'
 
 # network value can be DEVELOPMENT , ARWEAVE or IPFS, Recommended IPFS when deploying to testnet as the cli automatically takes care of uploading the executable with the help of web3.js key
 task_executable_network: 'IPFS'
@@ -12,20 +12,19 @@ task_executable_network: 'IPFS'
 task_audit_program: 'dist/main.js'
 
 # Total round time of your task : it must be given in slots and each slot is roughly equal to 408ms
-round_time: 13500
+round_time: 15075000
 
 audit_window: 5000
 submission_window: 5000
 
 # Amounts in KOII
-
 minimum_stake_amount: 1.9
 
 # total_bounty_amount cannot be grater than bounty_amount_per_round
 # total bounty is not accepted in case of update task
-total_bounty_amount: 100000
+total_bounty_amount: 10
 
-bounty_amount_per_round: 3000
+bounty_amount_per_round: 10
 
 #Number of times allowed to re-submit the distribution  list in case the distribution list is audited
 allowed_failed_distributions: 5
@@ -46,6 +45,9 @@ requirementsTags:
   - type: TASK_VARIABLE
     value: 'TWITTER_PHONE'
     description: 'If verification is required, will use your phone number to login.'
+  - type: TASK_VARIABLE
+    value: 'TWITTER_COMMENTS'
+    description: 'Add the comments you need to post on Twitter.'
   - type: CPU
     value: '4-core'
   - type: RAM
@@ -53,10 +55,11 @@ requirementsTags:
   - type: STORAGE
     value: '5 GB'
 
-# OPTIONAL variables variables for creating task / REQUIRED variables for update task
-
 # OPTIONAL Only provide the taskId if you are updating the task otherwise leave blank
-task_id: 'tJSktQhJYm4gFvSvk7AHki7BqPub3EWd3SFuaCpF2go'
+task_id: ''
 
 # Provide the description for changes made in new version of task
-migrationDescription: 'Audit Function updated'
+migrationDescription: ''
+# - type: TASK_VARIABLE
+#   value: 'TWITTER_PROFILE'
+#   description: 'User name of the profile where you need to post the comment.'

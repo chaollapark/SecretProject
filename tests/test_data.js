@@ -1,9 +1,6 @@
 // Tests for the Data class
 const datadb = require('../helpers/db');
 
-
-
-
 const Item = require('../model/item');
 
 const testData = [
@@ -19,12 +16,9 @@ async function test() {
 
   // TEST create healthy Item
 
-  
-    // let healthyId = '222.239.92.29:1988';
-    // let healthyItem = '222.239.92.29:1988'
-    // await datadb.addHealthyItem(healthyId, healthyItem)
-  
-
+  // let healthyId = '222.239.92.29:1988';
+  // let healthyItem = '222.239.92.29:1988'
+  // await datadb.addHealthyItem(healthyId, healthyItem)
 
   // Test creating an item
   // datadb
@@ -43,13 +37,12 @@ async function test() {
   //     console.log('Get item test passed', item);
   //   })
 
-    // Test getting a list of items
+  // Test getting a list of items
   // let testlist = await datadb.getList();
   // console.log('test list is ', testlist);
 
   // Test pending item functionality
   // datadb.addPendingItem(5, new Item({ id: 5, name: 'Item 5', description: 'Fifth item' }))
-    
 
   // TEST get healthy list
   // let healthyList = await datadb.getHealthyList()
@@ -68,12 +61,9 @@ async function test() {
   //     console.log("return result is ", item)
   // })
 
-
-
   // Test getting pending List
   // let pendinglist = await datadb.getPendingList()
   // console.log('pending list is ', pendinglist);
-    
 
   // TEST delete itme
   // data.deleteItem("pending:test:5")
@@ -85,8 +75,8 @@ async function test() {
   //   });
 
   // Test getting pending item
-//  let result = await datadb.getPendingItem(5)
-// console.log('result is ', result)
+  //  let result = await datadb.getPendingItem(5)
+  // console.log('result is ', result)
 
   // TEST set IPFS
   // if (testlist) {

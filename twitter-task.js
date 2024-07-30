@@ -69,6 +69,8 @@ class TwitterTask {
         throw new Error('Environment variables TWITTER_COMMENTS is not set');
       }
 
+      this.comment = comment;
+
       let credentials = {
         username: username,
         password: password,
@@ -83,10 +85,15 @@ class TwitterTask {
   }
 
   async initialize() {
-    console.log('initializing twitter task');
-    //Store this round searchTerm
-    console.log('creating crawler for user:', this.comment, this.round);
-    this.db.createSearchTerm(this.comment, this.round);
+    try {
+      console.log('initializing twitter task');
+      this.searchTerm = await this.fetchSearchTerms();
+      //Store this round searchTerm
+      console.log('creating crawler for user:', this.searchTerm, this.round);
+      this.db.createSearchTerm(this.searchTerm, this.round);
+    } catch (error) {
+      throw new Error('Environment variables TWITTER_PROFILE is not set');
+    }
   }
 
   /**
@@ -94,31 +101,39 @@ class TwitterTask {
    * @description return the search terms to use for the crawler
    * @returns {array} - an array of search terms
    */
-  // async fetchSearchTerms() {
-  //   let keyword;
+  async fetchSearchTerms() {
+    let keyword;
 
-  //   try {
-  //     const submitterAccountKeyPair = (
-  //       await namespaceWrapper.getSubmitterAccount()
-  //     ).publicKey;
-  //     const key = submitterAccountKeyPair.toBase58();
-  //     console.log('submitter key', key);
-  //     const response = await axios.get('http://localhost:3000/keywords', {
-  //       params: {
-  //         key: key,
-  //       },
-  //     });
-  //     console.log('Users from middle server', response.data);
-  //     keyword = response.data;
-  //   } catch (error) {
-  //     console.log('No Users from middle server, loading local keywords.json');
-  //     const wordsList = require('./userList.json');
-  //     const randomIndex = Math.floor(Math.random() * wordsList.length);
-  //     keyword = wordsList[randomIndex]; // Load local JSON data
-  //   }
+    try {
+      const getUserProfile = process.env.TWITTER_PROFILE || 'JDVance';
 
-  //   return encodeURIComponent(keyword);
-  // }
+      if (!getUserProfile || getUserProfile.trim().length === 0) {
+        throw new Error('Environment variables TWITTER_PROFILE is not set');
+      }
+
+      keyword = getUserProfile;
+      // const submitterAccountKeyPair = (
+      //   await namespaceWrapper.getSubmitterAccount()
+      // ).publicKey;
+      // const key = submitterAccountKeyPair.toBase58();
+      // console.log('submitter key', key);
+      // const response = await axios.get('http://localhost:3000/keywords', {
+      //   params: {
+      //     key: key,
+      //   },
+      // });
+      // console.log('Users from middle server', response.data);
+      // keyword = response.data;
+    } catch (error) {
+      console.log(
+        'No Users from middle server, loading local keywords.json :: ',
+        e,
+      );
+      keyword = '';
+    }
+
+    return encodeURIComponent(keyword);
+  }
 
   /**
    * strat
@@ -136,7 +151,7 @@ class TwitterTask {
       limit: 100,
       searchTerm: this.searchTerm,
       query: `https://twitter.com/${this.searchTerm}`,
-      commentSection: this.comment,
+      comment: `${this.comment} 🛋️🛋️🛋️`,
       depth: 3,
       round: this.round,
       recursive: true,

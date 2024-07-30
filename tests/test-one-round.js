@@ -9,8 +9,9 @@ function sleep(ms) {
 
 async function executeTasks() {
   for (let i = 3; i < 4; i++) {
-    let delay = 6000000;
+    let delay = 600000;
     let round = i;
+    console.log(' IN LOOP :::: ', i);
     coreLogic.task(round);
     // await sleep(50000);
     // coreLogic.auditTask(round - 1);

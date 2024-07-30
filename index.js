@@ -5,7 +5,6 @@ const {
   taskNodeAdministered,
 } = require('./namespaceWrapper');
 
-
 /**
  * setup
  * @description sets up the task node, particularly the inter-process communication to start and stop the task
@@ -28,13 +27,15 @@ async function setup() {
       coreLogic.task(m.roundNumber);
     } else if (m.functionCall == 'generateAndSubmitDistributionList') {
       console.log('generateAndSubmitDistributionList called');
-      coreLogic.selectAndGenerateDistributionList(m.roundNumber, m.isPreviousRoundFailed);
+      // coreLogic.selectAndGenerateDistributionList(
+      //   m.roundNumber,
+      //   m.isPreviousRoundFailed,
+      // );
     } else if (m.functionCall == 'distributionListAudit') {
       console.log('distributionListAudit called');
-      coreLogic.auditDistribution(m.roundNumber, m.isPreviousRoundFailed);
+      // coreLogic.auditDistribution(m.roundNumber, m.isPreviousRoundFailed);
     }
   });
-
 }
 
 if (taskNodeAdministered) {
@@ -54,5 +55,5 @@ if (app) {
 
     res.status(200).json({ taskState: state });
   });
-  app.use('/api/', require('./routes') );
+  app.use('/api/', require('./routes'));
 }
