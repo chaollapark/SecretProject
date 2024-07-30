@@ -48,6 +48,7 @@ class TwitterTask {
     this.isRunning = false;
     this.searchTerm = [];
     this.adapter = null;
+    this.comment = '';
     this.db = new Data('db', []);
     this.db.initializeData();
     this.initialize();
@@ -56,6 +57,7 @@ class TwitterTask {
       const username = process.env.TWITTER_USERNAME;
       const password = process.env.TWITTER_PASSWORD;
       const phone = process.env.TWITTER_PHONE;
+      const comment = process.env.TWITTER_COMMENTS;
 
       if (!username || !password) {
         throw new Error(
@@ -63,12 +65,17 @@ class TwitterTask {
         );
       }
 
+      if (!comment || comment.trim().length === 0) {
+        throw new Error('Environment variables TWITTER_COMMENTS is not set');
+      }
+
       let credentials = {
         username: username,
         password: password,
         phone: phone,
       };
-      this.adapter = new Twitter(credentials, this.db, 3);
+
+      this.adapter = new Twitter(credentials, this.db, 3, comment);
       await this.adapter.negotiateSession();
     };
 
@@ -77,10 +84,9 @@ class TwitterTask {
 
   async initialize() {
     console.log('initializing twitter task');
-    this.searchTerm = await this.fetchSearchTerms();
     //Store this round searchTerm
-    console.log('creating crawler for user:', this.searchTerm, this.round);
-    this.db.createSearchTerm(this.searchTerm, this.round);
+    console.log('creating crawler for user:', this.comment, this.round);
+    this.db.createSearchTerm(this.comment, this.round);
   }
 
   /**
@@ -88,31 +94,31 @@ class TwitterTask {
    * @description return the search terms to use for the crawler
    * @returns {array} - an array of search terms
    */
-  async fetchSearchTerms() {
-    let keyword;
+  // async fetchSearchTerms() {
+  //   let keyword;
 
-    try {
-      const submitterAccountKeyPair = (
-        await namespaceWrapper.getSubmitterAccount()
-      ).publicKey;
-      const key = submitterAccountKeyPair.toBase58();
-      console.log('submitter key', key);
-      const response = await axios.get('http://localhost:3000/keywords', {
-        params: {
-          key: key,
-        },
-      });
-      console.log('Users from middle server', response.data);
-      keyword = response.data;
-    } catch (error) {
-      console.log('No Users from middle server, loading local keywords.json');
-      const wordsList = require('./userList.json');
-      const randomIndex = Math.floor(Math.random() * wordsList.length);
-      keyword = wordsList[randomIndex]; // Load local JSON data
-    }
+  //   try {
+  //     const submitterAccountKeyPair = (
+  //       await namespaceWrapper.getSubmitterAccount()
+  //     ).publicKey;
+  //     const key = submitterAccountKeyPair.toBase58();
+  //     console.log('submitter key', key);
+  //     const response = await axios.get('http://localhost:3000/keywords', {
+  //       params: {
+  //         key: key,
+  //       },
+  //     });
+  //     console.log('Users from middle server', response.data);
+  //     keyword = response.data;
+  //   } catch (error) {
+  //     console.log('No Users from middle server, loading local keywords.json');
+  //     const wordsList = require('./userList.json');
+  //     const randomIndex = Math.floor(Math.random() * wordsList.length);
+  //     keyword = wordsList[randomIndex]; // Load local JSON data
+  //   }
 
-    return encodeURIComponent(keyword);
-  }
+  //   return encodeURIComponent(keyword);
+  // }
 
   /**
    * strat
@@ -130,6 +136,7 @@ class TwitterTask {
       limit: 100,
       searchTerm: this.searchTerm,
       query: `https://twitter.com/${this.searchTerm}`,
+      commentSection: this.comment,
       depth: 3,
       round: this.round,
       recursive: true,

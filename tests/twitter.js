@@ -29,6 +29,11 @@ const run = async () => {
 
   const username = process.env.TWITTER_USERNAME;
   const password = process.env.TWITTER_PASSWORD;
+  const comment = process.env.TWITTER_COMMENTS;
+
+  if (!comment || comment.trim().length === 0) {
+    throw new Error('Environment variables TWITTER_COMMENTS is not set');
+  }
 
   let credentials = {
     username: username,
@@ -37,7 +42,7 @@ const run = async () => {
 
   let data = new Data('twitter', db);
 
-  let adapter = new Twitter(credentials, data, 3);
+  let adapter = new Twitter(credentials, data, 3, comment);
 
   await adapter.negotiateSession();
 

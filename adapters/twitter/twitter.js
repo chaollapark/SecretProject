@@ -20,7 +20,7 @@ const bcrypt = require('bcryptjs');
  */
 
 class Twitter extends Adapter {
-  constructor(credentials, db, maxRetry) {
+  constructor(credentials, db, maxRetry, comment) {
     super(credentials, maxRetry);
     this.credentials = credentials;
     this.db = new Data('db', []);
@@ -38,6 +38,7 @@ class Twitter extends Adapter {
     this.w3sKey = null;
     this.round = null;
     this.maxRetry = maxRetry;
+    this.comment = comment;
   }
 
   /**
@@ -424,7 +425,17 @@ class Twitter extends Adapter {
     for (const char of text) {
       console.log(`Typing character: "${char}"`);
       await page.type(selector, char);
-      await page.waitForTimeout(Math.random() * 100 + 30);
+
+      // Randomly wait for a short duration to mimic human typing speed variability
+      const typingSpeed = Math.random() * 100 + 30;
+      await page.waitForTimeout(typingSpeed);
+
+      // Randomly add longer pauses to mimic thinking
+      if (Math.random() < 0.1) {
+        // 10% chance to take a longer pause
+        const thinkingPause = Math.random() * 1000 + 200;
+        await page.waitForTimeout(thinkingPause);
+      }
     }
 
     console.log(`Finished typing. Waiting for additional delay`);
@@ -450,24 +461,45 @@ class Twitter extends Adapter {
       const el = articles[0];
       const tweetUrl = $('a[href*="/status/"]').attr('href');
       const tweetId = tweetUrl.split('/').pop();
+
+      // write a comment and post
+      await this.page.goto(`https://x.com/nebula_byte/status/${tweetId}`);
+      await this.page.waitForTimeout(await this.randomDelay(6000));
+      await this.page.click(
+        'div[data-testid="tweetTextarea_0RichTextInputContainer"]',
+      );
+      await this.page.waitForTimeout(await this.randomDelay(5000));
+      await this.humanType(
+        this.page,
+        'div[data-testid="tweetTextarea_0RichTextInputContainer"]',
+        this.comment,
+      );
+      await this.page.waitForTimeout(await this.randomDelay(10000));
+      await this.page.evaluate(async () => {
+        const button = document.querySelector(
+          'button[data-testid="tweetButtonInline"]',
+        );
+        if (button && !button.disabled) {
+          await button.click();
+        } else {
+          console.log('cant click the button');
+        }
+      });
+
+      // get the other info about the article
       const screen_name = $(el).find('a[tabindex="-1"]').text();
       const allText = $(el).find('a[role="link"]').text();
       const user_name = allText.split('@')[0];
-
       const user_url =
         'https://x.com' + $(el).find('a[role="link"]').attr('href');
       const user_img = $(el).find('img[draggable="true"]').attr('src');
-
       const tweet_text = $(el)
         .find('div[data-testid="tweetText"]')
         .first()
         .text();
-
       const outerMediaElements = $(el).find('div[data-testid="tweetText"] a');
-
       const outer_media_urls = [];
       const outer_media_short_urls = [];
-
       outerMediaElements.each(function () {
         const fullURL = $(this).attr('href');
         const shortURL = $(this).text().replace(/\s/g, '');
@@ -484,7 +516,6 @@ class Twitter extends Adapter {
           outer_media_short_urls.push(shortURL);
         }
       });
-
       const timeRaw = $(el).find('time').attr('datetime');
       const time = await this.convertToTimestamp(timeRaw);
       const tweet_record = $(el).find(
@@ -501,47 +532,7 @@ class Twitter extends Adapter {
       const salt = bcrypt.genSaltSync(saltRounds);
       const hash = bcrypt.hashSync(originData, salt);
 
-      // set timeout
-      await this.page.goto(`https://x.com/nebula_byte/status/${tweetId}`);
-
       await this.page.waitForTimeout(await this.randomDelay(6000));
-
-      await this.page.click(
-        'div[data-testid="tweetTextarea_0RichTextInputContainer"]',
-      );
-
-      await this.page.waitForTimeout(await this.randomDelay(5000));
-
-      await this.humanType(
-        this.page,
-        'div[data-testid="tweetTextarea_0RichTextInputContainer"]',
-        'hello star star',
-      );
-
-      console.log('wrote the post');
-      await this.page.waitForTimeout(await this.randomDelay(10000));
-
-      await this.page.evaluate(async () => {
-        const button = document.querySelector(
-          'button[data-testid="tweetButtonInline"]',
-        );
-
-        console.log(button);
-
-        if (button && !button.disabled) {
-          console.log('Tweet button is enabled. Posting comment.');
-          await button.click();
-          console.log('Comment posted.');
-        } else {
-          console.log('problem is writing a comment');
-        }
-      });
-
-      await this.page.waitForTimeout(await this.randomDelay(6000));
-
-      console.log('WHYYYYYYYYY');
-
-      return null;
 
       if (screen_name && tweet_text) {
         data = {
