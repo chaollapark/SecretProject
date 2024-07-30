@@ -1,5 +1,5 @@
 // Import required modules
-const Adapter = require('../adapter.js');
+const Adapter = require('../../model/adapter');
 const cheerio = require('cheerio');
 // const { SpheronClient, ProtocolEnum } = require('@spheron/storage');
 const { KoiiStorageClient } = require('@_koii/storage-task-sdk');
@@ -77,7 +77,10 @@ class Twitter extends Adapter {
         console.log('Old browser closed');
       }
       const options = {};
-      const userDataDir = path.join(__dirname, 'puppeteer_cache_koii_twitter_archive');
+      const userDataDir = path.join(
+        __dirname,
+        'puppeteer_cache_koii_twitter_archive',
+      );
       const stats = await PCR(options);
       console.log(
         '*****************************************CALLED PURCHROMIUM RESOLVER*****************************************',
@@ -85,7 +88,7 @@ class Twitter extends Adapter {
       this.browser = await stats.puppeteer.launch({
         executablePath: stats.executablePath,
         userDataDir: userDataDir,
-        // headless: false,
+        headless: false,
         userAgent:
           'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
         args: [
@@ -193,8 +196,8 @@ class Twitter extends Adapter {
           );
           await this.page.keyboard.press('Enter');
 
-           // add delay
-           await new Promise(resolve => setTimeout(resolve, 3000));
+          // add delay
+          await new Promise(resolve => setTimeout(resolve, 3000));
         }
 
         const currentURL = await this.page.url();
@@ -273,8 +276,9 @@ class Twitter extends Adapter {
       // Replace the selector with a Twitter-specific element that indicates a logged-in state
       // This is just an example; you'll need to determine the correct selector for your case
       const isLoggedIn =
-      (await this.page.url()) !==
-      'https://x.com/i/flow/login?redirect_after_login=%2Fhome' && !(await this.page.url()).includes("https://x.com/?logout="); 
+        (await this.page.url()) !==
+          'https://x.com/i/flow/login?redirect_after_login=%2Fhome' &&
+        !(await this.page.url()).includes('https://x.com/?logout=');
 
       if (isLoggedIn) {
         console.log('Logged in using existing cookies');
@@ -293,6 +297,7 @@ class Twitter extends Adapter {
       return false;
     }
   };
+
   createNewPage = async () => {
     //attemp 3 times to create new page
     let currentAttempt = 0;
@@ -307,15 +312,16 @@ class Twitter extends Adapter {
     }
     return null;
   };
-  checkLogin = async () => {  
 
+  checkLogin = async () => {
     const newPage = await this.browser.newPage(); // Create a new page
     await newPage.goto('https://x.com/home');
     await newPage.waitForTimeout(await this.randomDelay(5000));
     // Replace the selector with a Twitter-specific element that indicates a logged-in state
     const isLoggedIn =
-    (await newPage.url()) !==
-    'https://x.com/i/flow/login?redirect_after_login=%2Fhome' && !(await newPage.url()).includes("https://x.com/?logout="); 
+      (await newPage.url()) !==
+        'https://x.com/i/flow/login?redirect_after_login=%2Fhome' &&
+      !(await newPage.url()).includes('https://x.com/?logout=');
     if (isLoggedIn) {
       console.log('Logged in using existing cookies');
       console.log('Updating last session check');
@@ -325,9 +331,8 @@ class Twitter extends Adapter {
       this.sessionValid = false;
     }
     return this.sessionValid;
-
   };
-  
+
   saveCookiesToDB = async cookies => {
     try {
       const data = await this.db.getCookie();
@@ -341,16 +346,6 @@ class Twitter extends Adapter {
       console.log('Error saving cookies to database', e);
     }
   };
-
-  // isPasswordCorrect = async (page, currentURL) => {
-  //   await this.page.waitForTimeout(8000);
-
-  //   const newURL = await this.page.url();
-  //   if (newURL === currentURL) {
-  //     return false;
-  //   }
-  //   return true;
-  // };
 
   isEmailVerificationRequired = async page => {
     // Wait for some time to allow the page to load the required elements
@@ -423,6 +418,18 @@ class Twitter extends Adapter {
     }
   };
 
+  humanType = async (page, selector, text) => {
+    console.log(`Typing into ${selector}: "${text}"`);
+
+    for (const char of text) {
+      console.log(`Typing character: "${char}"`);
+      await page.type(selector, char);
+      await page.waitForTimeout(Math.random() * 100 + 30);
+    }
+
+    console.log(`Finished typing. Waiting for additional delay`);
+  };
+
   /**
    * parseItem
    * @param {string} url - the url of the item to parse
@@ -446,7 +453,7 @@ class Twitter extends Adapter {
       const screen_name = $(el).find('a[tabindex="-1"]').text();
       const allText = $(el).find('a[role="link"]').text();
       const user_name = allText.split('@')[0];
-      // console.log('user_name', user_name);
+
       const user_url =
         'https://x.com' + $(el).find('a[role="link"]').attr('href');
       const user_img = $(el).find('img[draggable="true"]').attr('src');
@@ -489,12 +496,53 @@ class Twitter extends Adapter {
       const viewCount = tweet_record.eq(3).text();
       const tweets_content = tweet_text.replace(/\n/g, '<br>');
       const round = namespaceWrapper.getRound();
-
       const originData = tweets_content + round;
       const saltRounds = 10;
       const salt = bcrypt.genSaltSync(saltRounds);
       const hash = bcrypt.hashSync(originData, salt);
-      
+
+      // set timeout
+      await this.page.goto(`https://x.com/nebula_byte/status/${tweetId}`);
+
+      await this.page.waitForTimeout(await this.randomDelay(6000));
+
+      await this.page.click(
+        'div[data-testid="tweetTextarea_0RichTextInputContainer"]',
+      );
+
+      await this.page.waitForTimeout(await this.randomDelay(5000));
+
+      await this.humanType(
+        this.page,
+        'div[data-testid="tweetTextarea_0RichTextInputContainer"]',
+        'hello star star',
+      );
+
+      console.log('wrote the post');
+      await this.page.waitForTimeout(await this.randomDelay(10000));
+
+      await this.page.evaluate(async () => {
+        const button = document.querySelector(
+          'button[data-testid="tweetButtonInline"]',
+        );
+
+        console.log(button);
+
+        if (button && !button.disabled) {
+          console.log('Tweet button is enabled. Posting comment.');
+          await button.click();
+          console.log('Comment posted.');
+        } else {
+          console.log('problem is writing a comment');
+        }
+      });
+
+      await this.page.waitForTimeout(await this.randomDelay(6000));
+
+      console.log('WHYYYYYYYYY');
+
+      return null;
+
       if (screen_name && tweet_text) {
         data = {
           user_name: user_name,
@@ -518,7 +566,8 @@ class Twitter extends Adapter {
       return data;
     } catch (e) {
       console.log(
-        'Filtering advertisement tweets; continuing to the next item.',
+        'Filtering advertisement tweets; continuing to the next item :: ',
+        e,
       );
     }
   };
@@ -558,14 +607,12 @@ class Twitter extends Adapter {
       await this.page.waitForTimeout(await this.randomDelay(5000));
       await this.page.setViewport({ width: 1024, height: 4000 });
       await this.page.goto(url);
-
-      // Wait an additional 5 seconds until fully loaded before scraping
       await this.page.waitForTimeout(await this.randomDelay(5000));
 
       let i = 0;
       while (true) {
         i++;
-        // Check if the error message is present on the page inside an article element
+
         const errorMessage = await this.page.evaluate(() => {
           const elements = document.querySelectorAll('div[dir="ltr"]');
           for (let element of elements) {
@@ -579,29 +626,31 @@ class Twitter extends Adapter {
           return false;
         });
 
-        // Archive the tweets
         const items = await this.page.evaluate(() => {
           const elements = document.querySelectorAll(
             'article[aria-labelledby]',
           );
           return Array.from(elements).map(element => element.outerHTML);
         });
+
+        await this.page.waitForTimeout(await this.randomDelay(5000));
+
         console.log(items.length);
+
+        await this.page.waitForTimeout(await this.randomDelay(5000));
+
+        console.log();
+
         for (const item of items) {
           await new Promise(resolve => setTimeout(resolve, 1000)); // Adds a 1-second delay
           try {
             let data = await this.parseItem(item);
-            // console.log(data);
             if (data.tweets_id) {
-              // Check if id exists in database
               let checkItem = {
                 id: data.tweets_id,
               };
               const existingItem = await this.db.getItem(checkItem);
               if (!existingItem) {
-                // Store the item in the database
-                // const cid = await storeFiles(data, this.w3sKey);
-                // const cid = 'testcid';
                 this.cids.create({
                   id: data.tweets_id,
                   round: round,
@@ -609,23 +658,18 @@ class Twitter extends Adapter {
                 });
               }
             }
+
+            break;
           } catch (e) {
             console.log(
               'Filtering advertisement tweets; continuing to the next item.',
+              e,
             );
           }
         }
 
         try {
           let dataLength = (await this.cids.getList({ round: round })).length;
-          console.log(
-            'Already Archived',
-            dataLength,
-            'and',
-            i,
-            'times in round',
-            round,
-          );
           if (dataLength > 120 || i > 4) {
             console.log('reach maixmum data per round. Closed old browser');
             this.browser.close();
@@ -644,6 +688,7 @@ class Twitter extends Adapter {
         } catch (e) {
           console.log('round check error', e);
         }
+
         // If the error message is found, wait for 2 minutes, refresh the page, and continue
         if (errorMessage) {
           console.log('Rate limit reach, waiting for next round...');
@@ -653,36 +698,32 @@ class Twitter extends Adapter {
       }
       return;
     } catch (e) {
-      console.log('Last round fetching list stop');
+      console.log('Last round fetching list stop', e);
       return;
     }
   };
 
-
-  
   compareHash = async (data, saltRounds) => {
-      const round = namespaceWrapper.getRound();
-      const dataToCompare =
-        data.data.tweets_content+round; // + data.data.tweets_id;
-      console.log(dataToCompare);
-      const salt = bcrypt.genSaltSync(saltRounds);
-      const hash = bcrypt.hashSync(dataToCompare, salt);
-      console.log(hash);
-      const hashCompare = bcrypt.compareSync(dataToCompare, hash);
-      console.log(hashCompare);
-      const hashCompareWrong = bcrypt.compareSync(data.data.tweets_id, hash);
-      console.log(hashCompareWrong);
+    const round = namespaceWrapper.getRound();
+    const dataToCompare = data.data.tweets_content + round; // + data.data.tweets_id;
+    console.log(dataToCompare);
+    const salt = bcrypt.genSaltSync(saltRounds);
+    const hash = bcrypt.hashSync(dataToCompare, salt);
+    console.log(hash);
+    const hashCompare = bcrypt.compareSync(dataToCompare, hash);
+    console.log(hashCompare);
+    const hashCompareWrong = bcrypt.compareSync(data.data.tweets_id, hash);
+    console.log(hashCompareWrong);
   };
-  
- /**
-   * retrieveItem derived from fetchList 
-   * @param {*} url 
-   * @param {*} item 
-   * @returns 
+
+  /**
+   * retrieveItem derived from fetchList
+   * @param {*} url
+   * @param {*} item
+   * @returns
    */
   retrieveItem = async (verify_page, tweetid) => {
     try {
-
       let i = 0;
       while (true) {
         i++;
@@ -690,7 +731,6 @@ class Twitter extends Adapter {
         const errorMessage = await verify_page.evaluate(() => {
           const elements = document.querySelectorAll('div[dir="ltr"]');
           for (let element of elements) {
-           
             if (
               element.textContent === 'Something went wrong. Try reloading.'
             ) {
@@ -702,7 +742,6 @@ class Twitter extends Adapter {
 
         // Archive the tweets
         const items = await verify_page.evaluate(() => {
-          
           const elements = document.querySelectorAll(
             'article[aria-labelledby]',
           );
@@ -719,10 +758,10 @@ class Twitter extends Adapter {
             console.log(tweetid);
             if (data.tweets_id == tweetid) {
               return data;
-            }else{
-              console.log("tweets id diff, continue");
+            } else {
+              console.log('tweets id diff, continue');
             }
-            if (data.tweets_id == "1"){
+            if (data.tweets_id == '1') {
               temp = data;
             }
           } catch (e) {
@@ -732,7 +771,7 @@ class Twitter extends Adapter {
             );
           }
         }
-        
+
         return temp;
       }
     } catch (e) {
@@ -740,17 +779,21 @@ class Twitter extends Adapter {
       return;
     }
   };
+
   verify = async (tweetid, inputitem) => {
     console.log(inputitem);
-    console.log("above is input item");
+    console.log('above is input item');
     try {
       const options = {};
-      const userAuditDir = path.join(__dirname, 'puppeteer_cache_koii_twitter_archive_audit');
+      const userAuditDir = path.join(
+        __dirname,
+        'puppeteer_cache_koii_twitter_archive_audit',
+      );
       const stats = await PCR(options);
       let auditBrowser = await stats.puppeteer.launch({
         executablePath: stats.executablePath,
         userDataDir: userAuditDir,
-        // headless: false,
+        headless: false,
         userAgent:
           'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
         args: [
@@ -781,9 +824,13 @@ class Twitter extends Adapter {
       }
       console.log('retrieve item for ', url);
       const result = await this.retrieveItem(verify_page, tweetid);
-      if (result){
+      if (result) {
         if (result.tweets_content != inputitem.tweets_content) {
-          console.log("content not match", result.tweets_content, inputitem.tweets_content);
+          console.log(
+            'content not match',
+            result.tweets_content,
+            inputitem.tweets_content,
+          );
           auditBrowser.close();
           return false;
         }
@@ -793,14 +840,18 @@ class Twitter extends Adapter {
         //   return false;
         // }
         if (result.time_read - inputitem.time_read > 3600000 * 15) {
-          console.log("time read difference too big", result.time_read, inputitem.time_read);
+          console.log(
+            'time read difference too big',
+            result.time_read,
+            inputitem.time_read,
+          );
           auditBrowser.close();
           return false;
         }
         const dataToCompare = result.tweets_content;
         const hashCompare = bcrypt.compareSync(dataToCompare, inputitem.hash);
-        if(hashCompare==false){
-          console.log("hash not match", dataToCompare, inputitem.hash);
+        if (hashCompare == false) {
+          console.log('hash not match', dataToCompare, inputitem.hash);
           auditBrowser.close();
           return false;
         }
@@ -808,15 +859,13 @@ class Twitter extends Adapter {
         return true;
       }
       auditBrowser.close();
-      return false; 
-      
+      return false;
     } catch (e) {
       console.log('Error fetching single item', e);
       return false; // Return false in case of an exception
     }
   };
-  
-  
+
   scrollPage = async page => {
     await page.evaluate(() => {
       window.scrollBy(0, window.innerHeight);
@@ -836,16 +885,13 @@ class Twitter extends Adapter {
     links.forEach(link => {});
   };
 
-
-
-  randomDelay = async (delayTime) => {
-    const delay = Math.floor(Math.random() * (delayTime - 2000 + 1)) + (delayTime - 2000);
+  randomDelay = async delayTime => {
+    const delay =
+      Math.floor(Math.random() * (delayTime - 2000 + 1)) + (delayTime - 2000);
     // console.log('Delaying for', delay, 'ms');
     return delay;
-  }
+  };
 
-
-  
   /**
    * stop
    * @returns {Promise<boolean>}

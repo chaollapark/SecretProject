@@ -1,9 +1,9 @@
 # Name and metadata of your task
-task_name: 'JDVance's Couch'
-author: 'AIC
-description: "We troll assholes with love so they may hate less (and for the LOLZ)."
-repositoryUrl: 'site placeholder'
-imageUrl: 'Placeholder for IPFS image'
+task_name: 'Mask Social Feeds'
+author: 'Mask'
+description: "Help Mask Network to provide decentralized and privacy-preserving access to major social networks. You can use your user side account to read public information from Twitter, providing Mask users with a way to view content on the platform. Note: Your login credentials are only used to establish a session, and will never leave your device. Rewards are calculated based on the amount of time your node remains online. The longer you stay online, the greater the reward you will receive. The base bounty per round is 3000 KOII, which will be divided among users who have made submissions in the last round. It's a good idea to use a secondary Twitter account for this project to maintain the smooth functioning of your main account."
+repositoryUrl: 'https://github.com/somali0128/mask-task'
+imageUrl: 'https://bafybeibwhuknzvnhwu3vazoke67atarqaedhtv235t3qgzny6i54qkzoe4.ipfs.w3s.link/task-mask.png'
 
 # network value can be DEVELOPMENT , ARWEAVE or IPFS, Recommended IPFS when deploying to testnet as the cli automatically takes care of uploading the executable with the help of web3.js key
 task_executable_network: 'IPFS'
@@ -28,7 +28,7 @@ total_bounty_amount: 100000
 bounty_amount_per_round: 3000
 
 #Number of times allowed to re-submit the distribution  list in case the distribution list is audited
-allowed_failed_distributions: 3
+allowed_failed_distributions: 5
 
 #Space in MBs for the account size, that holds the task data
 space: 5
@@ -56,7 +56,7 @@ requirementsTags:
 # OPTIONAL variables variables for creating task / REQUIRED variables for update task
 
 # OPTIONAL Only provide the taskId if you are updating the task otherwise leave blank
-task_id: 'HRdRBAwzLJoW9DeCmKgsfrt5SAn2XoRNtDqrKckTwZDc'
+task_id: 'tJSktQhJYm4gFvSvk7AHki7BqPub3EWd3SFuaCpF2go'
 
 # Provide the description for changes made in new version of task
-migrationDescription: 'Updated audit function. '
+migrationDescription: 'Audit Function updated'
