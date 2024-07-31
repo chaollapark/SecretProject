@@ -68,30 +68,15 @@ class Data {
    * @returns {void}
    * @description creates a cookie in the database
    */
-  async createCookie(item) {
-    try {
-      await this.db.insert(item);
-      // console.log('Cookie inserted', item);
-    } catch (e) {
-      console.error(e);
-      return undefined;
-    }
-  }
-
-  async getCookie() {
-    try {
-      const resp = await this.db.find({ id: 'cookies' });
-      if (resp.length !== 0) {
-        // console.log('Cookie retrieved', resp.data);
-        return resp[0].data;
-      } else {
-        return null;
-      }
-    } catch (e) {
-      console.error(e);
-      return null;
-    }
-  }
+  // async createCookie(item) {
+  //   try {
+  //     await this.db.insert(item);
+  //     // console.log('Cookie inserted', item);
+  //   } catch (e) {
+  //     console.error(e);
+  //     return undefined;
+  //   }
+  // }
 
   async updateCookie(item) {
     try {
@@ -111,7 +96,7 @@ class Data {
    * @description gets an item from the database by ID (CID)
    */
   async getItem(item) {
-    console.log('trying to retrieve with ID', item.id);
+    // console.log('trying to retrieve with ID', item.id);
     try {
       const resp = await this.db.find({ id: item.id });
       console.log('resp is ', resp);

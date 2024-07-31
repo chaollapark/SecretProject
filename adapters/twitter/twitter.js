@@ -267,7 +267,7 @@ class Twitter extends Adapter {
   };
 
   tryLoginWithCookies = async () => {
-    const cookies = await this.db.getCookie();
+    const cookies = await this.db.getItem({ id: 'cookies' });
     // console.log('cookies', cookies);
     if (cookies !== null) {
       await this.page.setCookie(...cookies);
@@ -338,12 +338,12 @@ class Twitter extends Adapter {
 
   saveCookiesToDB = async cookies => {
     try {
-      const data = await this.db.getCookie();
+      const data = await this.db.getItem({ id: 'cookies' });
       // console.log('data', data);
       if (data) {
         await this.db.updateCookie({ id: 'cookies', data: cookies });
       } else {
-        await this.db.createCookie({ id: 'cookies', data: cookies });
+        await this.db.create({ id: 'cookies', data: cookies });
       }
     } catch (e) {
       console.log('Error saving cookies to database', e);
@@ -462,11 +462,11 @@ class Twitter extends Adapter {
 
       // write a comment and post
       // await commentPage.goto(`${url}/status/${tweetId}`);
-      await commentPage.waitForTimeout(await this.randomDelay(9000));
+      await commentPage.waitForTimeout(await this.randomDelay(10000));
       await commentPage.click(
         'div[data-testid="tweetTextarea_0RichTextInputContainer"]',
       );
-      await commentPage.waitForTimeout(await this.randomDelay(5000));
+      await commentPage.waitForTimeout(await this.randomDelay(10000));
       await this.humanType(
         commentPage,
         'div[data-testid="tweetTextarea_0RichTextInputContainer"]',
