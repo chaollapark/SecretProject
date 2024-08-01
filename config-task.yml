@@ -56,10 +56,10 @@ requirementsTags:
     value: '5 GB'
 
 # OPTIONAL Only provide the taskId if you are updating the task otherwise leave blank
-task_id: 'EHvxVzAtPaGF5JrCodvSvcy5TziFS9A8J7rF5h6GuPoV'
+task_id: '5QRrz2GVsLgUwdBWBnybFnfGdCNj87zcnNiB1SJN6ZTC'
 
 # Provide the description for changes made in new version of task
-migrationDescription: 'update the time'
+migrationDescription: 'update the description'
 # - type: TASK_VARIABLE
 #   value: 'TWITTER_PROFILE'
 #   description: 'User name of the profile where you need to post the comment.'
