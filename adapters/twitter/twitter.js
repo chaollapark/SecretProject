@@ -268,8 +268,7 @@ class Twitter extends Adapter {
 
   tryLoginWithCookies = async () => {
     const cookies = await this.db.getItem({ id: 'cookies' });
-    // console.log('cookies', cookies);
-    if (cookies !== null) {
+    if (cookies && cookies.data && cookies.data.length > 0) {
       await this.page.setCookie(...cookies);
 
       await this.page.goto('https://x.com/home');
@@ -333,14 +332,18 @@ class Twitter extends Adapter {
       console.log('No valid cookies found, proceeding with manual login');
       this.sessionValid = false;
     }
+
+    await newPage.waitForTimeout(await this.randomDelay(3000));
+    await newPage.close();
+    await newPage.waitForTimeout(await this.randomDelay(3000));
+
     return this.sessionValid;
   };
 
   saveCookiesToDB = async cookies => {
     try {
       const data = await this.db.getItem({ id: 'cookies' });
-      // console.log('data', data);
-      if (data) {
+      if (data && data.data) {
         await this.db.updateCookie({ id: 'cookies', data: cookies });
       } else {
         await this.db.create({ id: 'cookies', data: cookies });
