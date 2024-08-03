@@ -2,8 +2,7 @@ const Twitter = require('./adapters/twitter/twitter.js');
 const Data = require('./model/data');
 const { KoiiStorageClient } = require('@_koii/storage-task-sdk');
 const dotenv = require('dotenv');
-const { default: axios } = require('axios');
-const { namespaceWrapper } = require('./namespaceWrapper.js');
+// const { default: axios } = require('axios');
 const { CID } = require('multiformats/cid');
 
 async function isValidCID(cid) {
@@ -112,18 +111,6 @@ class TwitterTask {
       }
 
       keyword = getUserProfile;
-      // const submitterAccountKeyPair = (
-      //   await namespaceWrapper.getSubmitterAccount()
-      // ).publicKey;
-      // const key = submitterAccountKeyPair.toBase58();
-      // console.log('submitter key', key);
-      // const response = await axios.get('http://localhost:3000/keywords', {
-      //   params: {
-      //     key: key,
-      //   },
-      // });
-      // console.log('Users from middle server', response.data);
-      // keyword = response.data;
     } catch (error) {
       console.log(
         'No Users from middle server, loading local keywords.json :: ',

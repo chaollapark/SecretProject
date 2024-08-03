@@ -1,6 +1,6 @@
-const { namespaceWrapper } = require('./namespaceWrapper');
+const { namespaceWrapper } = require('@_koii/namespace-wrapper');
 const TwitterTask = require('./twitter-task');
-const { LAMPORTS_PER_SOL } = require('@_koi/web3.js');
+// const { LAMPORTS_PER_SOL } = require('@_koi/web3.js');
 
 class CoreLogic {
   constructor() {
@@ -71,7 +71,6 @@ class CoreLogic {
       try {
         taskAccountDataJSON = await namespaceWrapper.getTaskSubmissionInfo(
           round,
-          true,
         );
       } catch (error) {
         console.error('ERROR IN FETCHING TASK SUBMISSION DATA', error);
