@@ -29,5 +29,6 @@ These instructions are for running the task, not for experimenting with the code
 
 1. Go to Koii Network and download the Node.
 2. Detailed instructions for how to sign up and use the Node are available here.
-3. Click on "Add Task" /Users/Madan/Desktop/AssholesInGov/images/AddingTask.png
+3. Click on "Add Task" 
+![Adding Task](./images/AddingTask.png)
 4. Run the task!
