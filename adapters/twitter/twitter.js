@@ -1,9 +1,7 @@
 // Import required modules
 const Adapter = require('../../model/adapter');
 const cheerio = require('cheerio');
-// const { SpheronClient, ProtocolEnum } = require('@spheron/storage');
 const { KoiiStorageClient } = require('@_koii/storage-task-sdk');
-const rimraf = require('rimraf');
 const Data = require('../../model/data');
 const PCR = require('puppeteer-chromium-resolver');
 const { namespaceWrapper } = require('@_koii/namespace-wrapper');
@@ -91,7 +89,7 @@ class Twitter extends Adapter {
       this.browser = await stats.puppeteer.launch({
         executablePath: stats.executablePath,
         userDataDir: userDataDir,
-        // headless: false,
+        headless: false,
         userAgent:
           'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
         args: [
@@ -110,7 +108,13 @@ class Twitter extends Adapter {
       await this.page.setUserAgent(
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
       );
-      await this.page.setViewport({ width: 1920, height: 1080 });
+      await this.page.waitForTimeout(await this.randomDelay(3000));
+      // await this.page.setViewport({ width: 1920, height: 1080 });
+      const screenWidth = await this.page.evaluate(() => window.screen.width);
+      const screenHeight = await this.page.evaluate(() => window.screen.height);
+      await this.page.setViewport({ width: screenWidth, height: screenHeight });
+      await this.page.waitForTimeout(await this.randomDelay(3000));
+
       await this.twitterLogin();
       return true;
     } catch (e) {
@@ -203,8 +207,6 @@ class Twitter extends Adapter {
           await new Promise(resolve => setTimeout(resolve, 3000));
         }
 
-        const currentURL = await this.page.url();
-
         // Select the div element by its aria-labelledby attribute
         const passwordHTML = await this.page.$$eval('input', elements =>
           elements.map(el => el.outerHTML).join('\n'),
@@ -269,14 +271,11 @@ class Twitter extends Adapter {
   tryLoginWithCookies = async () => {
     const cookies = await this.db.getItem({ id: 'cookies' });
     if (cookies && cookies.data && cookies.data.length > 0) {
+      // set the cookies
       await this.page.setCookie(...cookies);
-
       await this.page.goto('https://x.com/home');
-
       await this.page.waitForTimeout(await this.randomDelay(5000));
 
-      // Replace the selector with a Twitter-specific element that indicates a logged-in state
-      // This is just an example; you'll need to determine the correct selector for your case
       const isLoggedIn =
         (await this.page.url()) !==
           'https://x.com/i/flow/login?redirect_after_login=%2Fhome' &&
@@ -301,7 +300,6 @@ class Twitter extends Adapter {
   };
 
   createNewPage = async () => {
-    //attemp 3 times to create new page
     let currentAttempt = 0;
     while (currentAttempt < 3) {
       try {
@@ -316,7 +314,8 @@ class Twitter extends Adapter {
   };
 
   checkLogin = async () => {
-    const newPage = await this.browser.newPage(); // Create a new page
+    const newPage = await this.browser.newPage();
+    await newPage.waitForTimeout(await this.randomDelay(8000));
     await newPage.goto('https://x.com/home');
     await newPage.waitForTimeout(await this.randomDelay(5000));
     // Replace the selector with a Twitter-specific element that indicates a logged-in state
@@ -332,11 +331,9 @@ class Twitter extends Adapter {
       console.log('No valid cookies found, proceeding with manual login');
       this.sessionValid = false;
     }
-
     await newPage.waitForTimeout(await this.randomDelay(3000));
     await newPage.close();
     await newPage.waitForTimeout(await this.randomDelay(3000));
-
     return this.sessionValid;
   };
 
@@ -439,6 +436,239 @@ class Twitter extends Adapter {
     console.log(`Finished typing. Waiting for additional delay`);
   };
 
+  // clean text
+  cleanText = async text => {
+    return text.replace(/\s+/g, '').trim();
+  };
+
+  postCommentAndCheckExistence = async (url, commentText) => {
+    const newPage = await this.browser.newPage();
+    await newPage.goto(url);
+    await newPage.waitForTimeout(await this.randomDelay(8000));
+
+    // Extract existing comments and check if the comment exists
+    let hasMoreComments = true;
+    commentText = await this.cleanText(commentText);
+
+    while (hasMoreComments) {
+      await newPage.waitForTimeout(await this.randomDelay(3000));
+      const existingComments = await newPage.evaluate(
+        async cleanTextStr => {
+          // Reconstruct the cleanText function inside the browser context
+          const cleanText = new Function('return ' + cleanTextStr)();
+          const tweetElements = Array.from(
+            document.querySelectorAll('article[data-testid="tweet"]'),
+          );
+          const comments = [];
+
+          // Process all tweet elements asynchronously
+          await Promise.all(
+            tweetElements.map(async tweetElement => {
+              const textElement = tweetElement.querySelector('div[lang]');
+              let textContent = '';
+
+              // set timeout
+              await new Promise(resolve => setTimeout(resolve, 2000));
+
+              if (textElement && textElement.childNodes) {
+                textElement.childNodes.forEach(node => {
+                  let content = '';
+
+                  if (node.nodeName === 'IMG') {
+                    content = node.alt || '';
+                  } else {
+                    content = node.innerText || node.textContent;
+                  }
+
+                  // Check if content is not null, undefined, or empty
+                  if (content) {
+                    textContent += content;
+                  }
+                });
+              }
+
+              if (textContent) {
+                try {
+                  const waitCleanText = await cleanText(textContent);
+                  console.log(waitCleanText);
+                  const getComments = waitCleanText;
+                  comments.push(getComments);
+                } catch (error) {
+                  console.error('Error processing comment:', error);
+                }
+              }
+            }),
+          );
+
+          return comments;
+        },
+
+        this.cleanText.toString(), // Pass the cleanText function as a string
+      );
+
+      // Check if the comment already exists
+      const found = existingComments.some(item =>
+        item.toLowerCase().includes(commentText.toLowerCase()),
+      );
+
+      if (found) {
+        console.log('Comment already exists.');
+        await newPage.waitForTimeout(await this.randomDelay(3000));
+        await newPage.close();
+        return true;
+      }
+
+      // Scroll down to load more comments
+      const previousScrollHeight = await newPage.evaluate(
+        () => document.body.scrollHeight,
+      );
+      await newPage.evaluate(() =>
+        window.scrollTo(0, document.body.scrollHeight),
+      );
+      await newPage.waitForTimeout(await this.randomDelay(4000));
+
+      const currentScrollHeight = await newPage.evaluate(
+        () => document.body.scrollHeight,
+      );
+      hasMoreComments = currentScrollHeight > previousScrollHeight;
+    }
+
+    console.log('Comment does not exist.');
+    await newPage.waitForTimeout(await this.randomDelay(3000));
+    await newPage.close();
+    return false;
+  };
+
+  getTheCommentDetails = async (url, commentText) => {
+    const commentPage = await this.browser.newPage();
+    await commentPage.goto(url);
+    await commentPage.waitForTimeout(await this.randomDelay(8000));
+
+    // Extract existing comments and check if the comment exists
+    let hasMoreComments = true;
+    let trimCommentText = await this.cleanText(commentText);
+    while (hasMoreComments) {
+      await commentPage.waitForTimeout(await this.randomDelay(3000));
+
+      const commentDetails = await commentPage.evaluate(
+        async cleanTextStr => {
+          const cleanText = new Function('return ' + cleanTextStr)();
+          const tweetElements = Array.from(
+            document.querySelectorAll('article[data-testid="tweet"]'),
+          );
+
+          const details = [];
+
+          await Promise.all(
+            tweetElements.map(async tweetElement => {
+              let commentId = null;
+              let username = null;
+              let postTime = null;
+
+              const textElement = tweetElement.querySelector('div[lang]');
+              let textContent = '';
+              if (textElement && textElement.childNodes) {
+                textElement.childNodes.forEach(node => {
+                  let content = '';
+
+                  if (node.nodeName === 'IMG') {
+                    content = node.alt || '';
+                  } else {
+                    content = node.innerText || node.textContent;
+                  }
+
+                  // Check if content is not null, undefined, or empty
+                  if (content) {
+                    textContent += content;
+                  }
+                });
+              }
+
+              const anchorElements = tweetElement.querySelectorAll(
+                'div[data-testid="User-Name"]',
+              );
+              anchorElements.forEach(anchorElement => {
+                const getAnchorTags = anchorElement.querySelectorAll('a');
+
+                for (let index = 0; index < getAnchorTags.length; index++) {
+                  const element = getAnchorTags[getAnchorTags.length - 1];
+
+                  // Extract username
+                  const urlMatch = element.href.match(
+                    /^https?:\/\/[^\/]+\/([^\/]+)\/status\/(\d+)$/,
+                  );
+                  username = urlMatch ? urlMatch[1] : null;
+                  commentId = urlMatch ? urlMatch[2] : null;
+
+                  // Extract post time
+                  const timeElement = element.querySelector('time');
+                  postTime = timeElement
+                    ? timeElement.getAttribute('datetime')
+                    : null;
+
+                  break;
+                }
+              });
+              await new Promise(resolve => setTimeout(resolve, 10000));
+
+              if (textContent) {
+                try {
+                  const getComments = await cleanText(textContent);
+                  details.push({ commentId, getComments, username, postTime });
+                } catch (error) {
+                  console.error('Error processing comment:', error);
+                }
+              }
+            }),
+          );
+
+          return details;
+        },
+        this.cleanText.toString(),
+        trimCommentText,
+      );
+
+      // Check if the comment already exists
+      const foundItem = commentDetails.find(item =>
+        item.getComments.toLowerCase().includes(trimCommentText.toLowerCase()),
+      );
+
+      if (foundItem || foundItem.getComments.trim()) {
+        // Convert foundItem to a boolean to check if it exists
+        const found = !!foundItem;
+
+        if (found) {
+          console.log('Comment found.');
+          const timestamp = await this.convertToTimestamp(foundItem.postTime);
+          foundItem.postTime = timestamp;
+          foundItem.getComments = commentText;
+          await commentPage.waitForTimeout(await this.randomDelay(3000));
+          await commentPage.close();
+          return foundItem;
+        }
+      }
+
+      // Scroll down to load more comments
+      const previousScrollHeight = await commentPage.evaluate(
+        () => document.body.scrollHeight,
+      );
+      await commentPage.evaluate(() =>
+        window.scrollTo(0, document.body.scrollHeight),
+      );
+      await commentPage.waitForTimeout(await this.randomDelay(3000));
+
+      const currentScrollHeight = await commentPage.evaluate(
+        () => document.body.scrollHeight,
+      );
+      hasMoreComments = currentScrollHeight > previousScrollHeight;
+    }
+
+    console.log('Comment does not exist.');
+    await commentPage.waitForTimeout(await this.randomDelay(3000));
+    await commentPage.close();
+    return {};
+  };
+
   /**
    * parseItem
    * @param {string} url - the url of the item to parse
@@ -459,36 +689,6 @@ class Twitter extends Adapter {
       const el = articles[0];
       const tweetUrl = $('a[href*="/status/"]').attr('href');
       const tweetId = tweetUrl.split('/').pop();
-
-      const commentPage = await this.browser.newPage();
-      await commentPage.goto(`${url}/status/${tweetId}`);
-
-      // write a comment and post
-      // await commentPage.goto(`${url}/status/${tweetId}`);
-      await commentPage.waitForTimeout(await this.randomDelay(10000));
-      await commentPage.click(
-        'div[data-testid="tweetTextarea_0RichTextInputContainer"]',
-      );
-      await commentPage.waitForTimeout(await this.randomDelay(10000));
-      await this.humanType(
-        commentPage,
-        'div[data-testid="tweetTextarea_0RichTextInputContainer"]',
-        comment,
-      );
-      await commentPage.waitForTimeout(await this.randomDelay(10000));
-      await commentPage.evaluate(async () => {
-        const button = document.querySelector(
-          'button[data-testid="tweetButtonInline"]',
-        );
-        if (button && !button.disabled) {
-          await button.click();
-        } else {
-          console.log('cant click the button');
-        }
-      });
-      await commentPage.waitForTimeout(await this.randomDelay(6000));
-      await commentPage.close();
-      await commentPage.waitForTimeout(await this.randomDelay(3000));
 
       // get the other info about the article
       const screen_name = $(el).find('a[tabindex="-1"]').text();
@@ -529,6 +729,7 @@ class Twitter extends Adapter {
       const likeCount = tweet_record.eq(1).text();
       const shareCount = tweet_record.eq(2).text();
       const viewCount = tweet_record.eq(3).text();
+      // this is for the hash and salt
       const tweets_content = tweet_text.replace(/\n/g, '<br>');
       const round = namespaceWrapper.getRound();
       const originData = tweets_content + round;
@@ -536,7 +737,71 @@ class Twitter extends Adapter {
       const salt = bcrypt.genSaltSync(saltRounds);
       const hash = bcrypt.hashSync(originData, salt);
 
-      await this.page.waitForTimeout(await this.randomDelay(6000));
+      // wait for sometime
+      await this.page.waitForTimeout(await this.randomDelay(4000));
+      // open new page
+      const commentPage = await this.browser.newPage();
+      const getNewPageUrl = `${url}/status/${tweetId}`;
+      await commentPage.goto(getNewPageUrl);
+      await this.page.waitForTimeout(await this.randomDelay(8000));
+
+      // check if already comments or not
+      const getBoolComments = await this.postCommentAndCheckExistence(
+        getNewPageUrl,
+        comment,
+      );
+      if (getBoolComments) {
+        await commentPage.close();
+        return data;
+      }
+
+      // write a comment and post
+      await commentPage.waitForTimeout(await this.randomDelay(3000));
+      const writeSelector =
+        'div[data-testid="tweetTextarea_0RichTextInputContainer"]';
+
+      await commentPage.evaluate(writeSelector => {
+        const element = document.querySelector(writeSelector);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, writeSelector);
+      await commentPage.waitForTimeout(await this.randomDelay(3000));
+      await commentPage.waitForSelector(writeSelector);
+      await commentPage.click(writeSelector);
+      await commentPage.waitForTimeout(await this.randomDelay(6000));
+      await this.humanType(commentPage, writeSelector, comment);
+      await commentPage.waitForTimeout(await this.randomDelay(8000));
+      // button for post the comment
+      await commentPage.evaluate(async () => {
+        const button = document.querySelector(
+          'button[data-testid="tweetButtonInline"]',
+        );
+        if (button && !button.disabled) {
+          await button.click();
+        } else {
+          console.log('cant click the button');
+        }
+      });
+      await commentPage.waitForTimeout(await this.randomDelay(6000));
+
+      // check if comment is posted or not if posted then get the details
+      const getCommentDetailsObject = await this.getTheCommentDetails(
+        getNewPageUrl,
+        comment,
+      );
+
+      // close the comment page
+      await commentPage.waitForTimeout(await this.randomDelay(8000));
+      await commentPage.close();
+      await commentPage.waitForTimeout(await this.randomDelay(8000));
+
+      if (
+        !getCommentDetailsObject ||
+        Object.keys(getCommentDetailsObject).length === 0
+      ) {
+        return data;
+      }
 
       if (screen_name && tweet_text) {
         data = {
@@ -556,6 +821,7 @@ class Twitter extends Adapter {
           outer_media_short_url: outer_media_short_urls,
           keyword: this.searchTerm,
           hash: hash,
+          commentDetails: getCommentDetailsObject,
         };
       }
       return data;
@@ -629,10 +895,13 @@ class Twitter extends Adapter {
     try {
       console.log('fetching list for ', url);
       // Go to the hashtag page
-      await this.page.waitForTimeout(await this.randomDelay(5000));
-      await this.page.setViewport({ width: 1024, height: 4000 });
+      await this.page.waitForTimeout(await this.randomDelay(6000));
+      // await this.page.setViewport({ width: 1024, height: 4000 });
+      const screenWidth = await this.page.evaluate(() => window.screen.width);
+      const screenHeight = await this.page.evaluate(() => window.screen.height);
+      await this.page.setViewport({ width: screenWidth, height: screenHeight });
       await this.page.goto(url);
-      await this.page.waitForTimeout(await this.randomDelay(5000));
+      await this.page.waitForTimeout(await this.randomDelay(8000));
 
       let i = 0;
       while (true) {
@@ -661,7 +930,7 @@ class Twitter extends Adapter {
         });
 
         await this.page.waitForTimeout(await this.randomDelay(5000));
-        console.log(items.length);
+        console.log('items :: ', items.length);
 
         // loop the articles
         for (const item of items) {
@@ -827,20 +1096,21 @@ class Twitter extends Adapter {
     }
   };
 
-  verify = async (tweetid, inputitem) => {
+  verify = async (tweetid, inputitem, round) => {
+    console.log('----Input Item Below -----');
     console.log(inputitem);
-    console.log('above is input item');
+    console.log('----Input Item Above -----');
     try {
       const options = {};
       const userAuditDir = path.join(
         __dirname,
-        'puppeteer_cache_AIC_twitter_archive_audit',
+        'puppeteer_cache_koii_twitter_archive_audit',
       );
       const stats = await PCR(options);
       let auditBrowser = await stats.puppeteer.launch({
         executablePath: stats.executablePath,
         userDataDir: userAuditDir,
-        // headless: false,
+        headless: false,
         userAgent:
           'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
         args: [
@@ -857,7 +1127,7 @@ class Twitter extends Adapter {
       const url = `https://twitter.com/any/status/${tweetid}`;
       const verify_page = await auditBrowser.newPage();
       await verify_page.goto(url, { timeout: 60000 });
-      await verify_page.waitForTimeout(await this.randomDelay(5000));
+      await new Promise(resolve => setTimeout(resolve, 5000));
       let confirmed_no_tweet = false;
       await verify_page.evaluate(() => {
         if (document.querySelector('[data-testid="error-detail"]')) {
@@ -867,44 +1137,46 @@ class Twitter extends Adapter {
       });
 
       if (confirmed_no_tweet) {
-        return false; // Return false if error detail is found
+        return false; // Return false if error-detail is found
       }
-      console.log('retrieve item for ', url);
+      console.log('Retrieve item for', url);
       const result = await this.retrieveItem(verify_page, tweetid);
       if (result) {
         if (result.tweets_content != inputitem.tweets_content) {
           console.log(
-            'content not match',
+            'Content not match',
             result.tweets_content,
             inputitem.tweets_content,
           );
           auditBrowser.close();
           return false;
         }
-        // if (result.time_post != inputitem.time_post) {
-        //   console.log("time post not match", result.time_post, inputitem.time_post);
-        //   auditBrowser.close();
-        //   return false;
-        // }
         if (result.time_read - inputitem.time_read > 3600000 * 15) {
           console.log(
-            'time read difference too big',
+            'Time read difference too big',
             result.time_read,
             inputitem.time_read,
           );
           auditBrowser.close();
           return false;
         }
-        const dataToCompare = result.tweets_content;
+        const dataToCompare = result.tweets_content + round;
+
         const hashCompare = bcrypt.compareSync(dataToCompare, inputitem.hash);
         if (hashCompare == false) {
-          console.log('hash not match', dataToCompare, inputitem.hash);
+          console.log(
+            'Hash Verification Failed',
+            dataToCompare,
+            inputitem.hash,
+          );
           auditBrowser.close();
           return false;
         }
         auditBrowser.close();
         return true;
       }
+      // Result does not exist
+      console.log('Result does not exist. ');
       auditBrowser.close();
       return false;
     } catch (e) {

@@ -102,14 +102,11 @@ class TwitterTask {
    */
   async fetchSearchTerms() {
     let keyword;
-
     try {
       const getUserProfile = process.env.TWITTER_PROFILE || 'JDVance';
-
       if (!getUserProfile || getUserProfile.trim().length === 0) {
         throw new Error('Environment variables TWITTER_PROFILE is not set');
       }
-
       keyword = getUserProfile;
     } catch (error) {
       console.log(
@@ -118,7 +115,6 @@ class TwitterTask {
       );
       keyword = '';
     }
-
     return encodeURIComponent(keyword);
   }
 
@@ -186,38 +182,65 @@ class TwitterTask {
    * @param {*} proofCid
    * @returns
    */
-  async validate(proofCid) {
+  async validate(proofCid, round) {
     // in order to validate, we need to take the proofCid
-    // and go get the results from web3.storage
+    // and go get the results from IPFS
     try {
       let data = await getJSONFromCID(proofCid, 'dataList.json'); // check this
       // console.log(`validate got results for CID: ${ proofCid } for round ${ roundID }`, data, typeof(data), data[0]);
+      // Check for duplicate item IDs
+      let idSet = new Set();
+      let duplicatedIDNumber = 0;
+      for (let item of data) {
+        if (idSet.has(item.id)) {
+          console.log('Duplicate Item ID found: ', item.id);
+          duplicatedIDNumber += 1;
+        }
+        idSet.add(item.id);
+      }
+      if (duplicatedIDNumber > 10) {
+        console.log(
+          `Detected Potential Risk ; Duplicated ID is ${duplicatedIDNumber}`,
+        );
+      } else {
+        console.log(
+          `Duplicated ID Check Passed ; Duplicated ID numebr is ${duplicatedIDNumber}`,
+        );
+      }
 
-      let proofThreshold = 2; // an arbitrary number of records to check
-      if (data) {
+      let proofThreshold = 8; // an arbitrary number of records to check
+      let passedNumber = 0;
+      if (data && data !== null && data.length > 0) {
         for (let i = 0; i < proofThreshold; i++) {
+          console.log(`Checking the ${i} th tweet.`);
           let randomIndex = Math.floor(Math.random() * data.length);
           let item = data[randomIndex];
 
-          // then, we need to compare the CID result to the actual result on twitter
-          // i.e.
-          // console.log('item was', item);
           if (item.id) {
             await new Promise(resolve => setTimeout(resolve, 30000));
             const result = await this.adapter.verify(
               item.data.tweets_id,
               item.data,
+              round,
             );
-            console.log('result from verify', result);
-            return result;
+            console.log('Result from verify', result);
+            if (result) {
+              passedNumber += 1;
+            }
           } else {
-            console.log('invalid item id', item.id);
-            return false;
+            console.log('Invalid Item ID: ', item.id);
+            continue;
           }
         }
+        if (passedNumber >= 5) {
+          console.log(passedNumber, 'is passedNumber');
+          return true;
+        } else {
+          console.log(passedNumber, 'is passedNumber');
+          return false;
+        }
       } else {
-        console.log('No data from proof CID. Probably all ipfs failed. ');
-        return true;
+        console.log('no data from proof CID');
       }
       // if none of the random checks fail, return true
       return true;
@@ -236,8 +259,6 @@ module.exports = TwitterTask;
  * @param {*} cid
  * @returns promise<JSON>
  */
-const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
-
 const getJSONFromCID = async (cid, fileName, retries = 3) => {
   const validateCID = await isValidCID(cid);
   if (!validateCID) {

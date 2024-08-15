@@ -1,9 +1,9 @@
 # Name and metadata of your task
 task_name: 'AssholeInChief'
 author: 'AIC'
-description: 'We choose an asshole, and we troll them!!!! What the task does: Volunteer your spare Twitter account to help us troll @JDVance. The trolling involves posting 1 comment per day with (your text) + 🛋🛋🛋. Before participating, please ensure that your volunteer Twitter account has passed the verification process. There are no rewards for this task right now, but we are planning events and bounties.'
+description: "Volunteer your spare Twitter account and join our mission to hold politicians accountable and shake up the status quo! We're on a quest to spotlight and confront public figures who fall short of integrity and responsibility. By diving into this initiative, you'll play a crucial role in exposing crucial issues and shaking up the political landscape. Please note that we only make one post per account every 24 hours. The task involves posting one (1) comment per day, which will look like:  '(TWITTER_COMMENTS) + 🛋🛋🛋'. Before participating, please ensure that your volunteer Twitter account has passed the verification process. There are no rewards for this task right now, but we are planning events and bounties."
 repositoryUrl: 'https://github.com/chaollapark/SecretProject/'
-imageUrl: 'https://ipfs-gateway.koii.live/ipfs/bafybeifivizbh4chl4qzcva7gwezdvcqejfz4erqn3aec2ipgjwke5p3eq/JDVcouch.jpg'
+imageUrl: 'https://ipfs-gateway.koii.live/ipfs/bafybeidqyigsevqzkxiuprzxipbakvf54gxe4ft427wxb5v5wbj54epdo4/AssholeInChief.png'
 
 # network value can be DEVELOPMENT , ARWEAVE or IPFS, Recommended IPFS when deploying to testnet as the cli automatically takes care of uploading the executable with the help of web3.js key
 task_executable_network: 'IPFS'
@@ -60,6 +60,3 @@ task_id: '5QRrz2GVsLgUwdBWBnybFnfGdCNj87zcnNiB1SJN6ZTC'
 
 # Provide the description for changes made in new version of task
 migrationDescription: 'update the description'
-# - type: TASK_VARIABLE
-#   value: 'TWITTER_PROFILE'
-#   description: 'User name of the profile where you need to post the comment.'
