@@ -633,7 +633,9 @@ class Twitter extends Adapter {
         item.getComments.toLowerCase().includes(trimCommentText.toLowerCase()),
       );
 
-      if (foundItem || foundItem.getComments.trim()) {
+      console.log(foundItem);
+
+      if (foundItem) {
         // Convert foundItem to a boolean to check if it exists
         const found = !!foundItem;
 
@@ -1037,12 +1039,16 @@ class Twitter extends Adapter {
    * @param {*} item
    * @returns
    */
-  retrieveItem = async (verify_page, tweetid) => {
+  retrieveItem = async (verify_page, tweetid, comment, url) => {
+    console.log(verify_page);
+    console.log(tweetid);
+    console.log(comment);
+    console.log(url);
     try {
       let i = 0;
       while (true) {
         i++;
-        // Check if the error message is present on the page inside an article element
+        // // Check if the error message is present on the page inside an article element
         const errorMessage = await verify_page.evaluate(() => {
           const elements = document.querySelectorAll('div[dir="ltr"]');
           for (let element of elements) {
@@ -1068,7 +1074,7 @@ class Twitter extends Adapter {
         for (const item of items) {
           await new Promise(resolve => setTimeout(resolve, 1000)); // Adds a 1-second delay
           try {
-            let data = await this.parseItem(item);
+            let data = await this.parseItem(item, comment, url);
             console.log(data);
             console.log(data.tweets_id);
             console.log(tweetid);
@@ -1124,7 +1130,7 @@ class Twitter extends Adapter {
           '--disable-gpu',
         ],
       });
-      const url = `https://twitter.com/any/status/${tweetid}`;
+      const url = `${inputitem.user_url}/status/${tweetid}`;
       const verify_page = await auditBrowser.newPage();
       await verify_page.goto(url, { timeout: 60000 });
       await new Promise(resolve => setTimeout(resolve, 5000));
@@ -1140,7 +1146,12 @@ class Twitter extends Adapter {
         return false; // Return false if error-detail is found
       }
       console.log('Retrieve item for', url);
-      const result = await this.retrieveItem(verify_page, tweetid);
+      const result = await this.retrieveItem(
+        verify_page,
+        tweetid,
+        inputitem.commentDetails.getComments,
+        inputitem.user_url,
+      );
       if (result) {
         if (result.tweets_content != inputitem.tweets_content) {
           console.log(
