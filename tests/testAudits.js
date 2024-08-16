@@ -20,61 +20,66 @@
 
 // ========================================================================================================================================
 
-// const Twitter = require('../adapters/twitter/twitter.js');
-// const bcrypt = require('bcryptjs');
+const Twitter = require('../adapters/twitter/twitter.js');
+const bcrypt = require('bcryptjs');
+const Data = require('../model/data');
 
-// const credentials = {
-//   username: process.env.TWITTER_USERNAME,
-//   password: process.env.TWITTER_PASSWORD,
-//   phone: 'your-phone-number',
-// };
-// const db = {}; // Replace with your actual database instance or mock
-// const maxRetry = 3;
+const credentials = {
+  username: process.env.TWITTER_USERNAME,
+  password: process.env.TWITTER_PASSWORD,
+  phone: process.env.TWITTER_PHONE,
+};
+const db = new Data('db', []);
+const maxRetry = 3;
 
-// const twitterInstance = new Twitter(credentials, db, maxRetry);
+const twitterInstance = new Twitter(
+  credentials,
+  db,
+  maxRetry,
+  'koii network 🛋️🛋️🛋️',
+);
 
-// (async () => {
-//   await twitterInstance.negotiateSession();
-//   try {
-//     const tweetID = '1813083694112076127'; // Replace with the actual URL you want to fetch
+(async () => {
+  try {
+    const webresult = {
+      id: '1822245059627978849',
+      round: 44,
+      data: {
+        user_name: 'JD Vance',
+        screen_name: '@JDVance',
+        user_url: 'https://x.com/JDVance',
+        user_img:
+          'https://pbs.twimg.com/profile_images/1817220042578173953/5r-Qpvgt_normal.jpg',
+        tweets_id: '1819050907293655444',
+        tweets_content:
+          'Our border czar Kamala Harris opened up the border by design. Now real people are suffering.',
+        time_post: 1722530507,
+        time_read: 1723600284668,
+        keyword: 'JDVance',
+        hash: '$2a$10$l3rO0axR4Q3dYicO0NhhreQZ/hT6/QGxOmxTbVrTYWq3DfXVnGcLm',
+        commentDetails: {
+          commentId: '1822245059627978844',
+          getComments: 'apple 🛋️🛋️🛋️',
+          username: 'museowunsaram',
+          postTime: 1723292052,
+        },
+      },
+      _id: '0HarrHW6o6UGl2NO',
+    };
 
-//     const webresult = {
-//       id: '1813083694112076127',
-//       round: 330,
-//       data: {
-//         user_name: 'AsapChingon',
-//         screen_name: '@Roberto_G91',
-//         user_url: 'https://twitter.com/Roberto_G91',
-//         user_img:
-//           'https://pbs.twimg.com/profile_images/1786496451796713472/T_-8HfZg_normal.jpg',
-//         tweets_id: '1813083694112076127',
-//         tweets_content:
-//           'Mary Jane will always be here, I’ll re connect with her at some point later in life. Right now it’s all business',
-//         time_post: 1721107812,
-//         time_read: 1721108017123,
-//         comment: '',
-//         like: '',
-//         share: '',
-//         view: '1',
-//         outer_media_url: [],
-//         outer_media_short_url: [],
-//         keyword: 'later',
-//       },
-//       _id: '0e2leB4TSrw4tYPK',
-//     };
-//     const originData = webresult.data.tweets_content + webresult.data.time_post;
-//     const saltRounds = 10;
-//     const salt = bcrypt.genSaltSync(saltRounds);
-//     const hash = bcrypt.hashSync(originData, salt);
-//     webresult.data.hash = hash;
-//     const retrievedJSON = JSON.stringify(webresult);
-//     const parsedData = JSON.parse(retrievedJSON);
-//     const datajson = parsedData.data;
+    const originData = webresult.data.tweets_content + webresult.data.time_post;
+    const saltRounds = 10;
+    const salt = bcrypt.genSaltSync(saltRounds);
+    const hash = bcrypt.hashSync(originData, salt);
+    webresult.data.hash = hash;
+    const retrievedJSON = JSON.stringify(webresult);
+    const parsedData = JSON.parse(retrievedJSON);
+    const datajson = parsedData.data;
 
-//     console.log(retrievedJSON);
-//     const result = await twitterInstance.verify(tweetID, datajson);
-//     console.log(result);
-//   } catch (error) {
-//     console.error('Error:', error);
-//   }
-// })();
+    console.log(retrievedJSON);
+    const result = await twitterInstance.verify(datajson, 2);
+    console.log(result);
+  } catch (error) {
+    console.error('Error:', error);
+  }
+})();
