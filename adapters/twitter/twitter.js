@@ -115,7 +115,7 @@ class Twitter extends Adapter {
       await this.page.setViewport({ width: screenWidth, height: screenHeight });
       await this.page.waitForTimeout(await this.randomDelay(3000));
 
-      await this.twitterLogin();
+      await this.twitterLogin(this.page, this.browser);
       return true;
     } catch (e) {
       console.log('Error negotiating session', e);
@@ -138,9 +138,9 @@ class Twitter extends Adapter {
    * 9. If login was unsuccessful, return false
    * 10. If login was unsuccessful, try again
    */
-  twitterLogin = async () => {
+  twitterLogin = async (currentPage, currentBrowser) => {
     let currentAttempt = 0;
-    const cookieLoginSuccess = await this.tryLoginWithCookies();
+    const cookieLoginSuccess = await this.tryLoginWithCookies(currentPage);
     if (cookieLoginSuccess) {
       this.sessionValid = true;
       return this.sessionValid;
@@ -149,7 +149,7 @@ class Twitter extends Adapter {
       try {
         console.log(currentAttempt, this.maxRetry);
         console.log('Step: Go to login page');
-        await this.page.goto('https://x.com/i/flow/login', {
+        await currentPage.goto('https://x.com/i/flow/login', {
           timeout: await this.randomDelay(60000),
           waitUntil: 'networkidle0',
         });
@@ -158,34 +158,37 @@ class Twitter extends Adapter {
         console.log('Waiting for login page to load');
 
         // Retrieve the outer HTML of the body element
-        const bodyHTML = await this.page.evaluate(
+        const bodyHTML = await currentPage.evaluate(
           () => document.body.outerHTML,
         );
 
         // Write the HTML to a file
         fs.writeFileSync(`${basePath}/bodyHTML.html`, bodyHTML);
 
-        await this.page.waitForSelector('input', {
+        await currentPage.waitForSelector('input', {
           timeout: await this.randomDelay(60000),
         });
         // Select the div element by its aria-labelledby attribute
-        const usernameHTML = await this.page.$eval('input', el => el.outerHTML);
+        const usernameHTML = await currentPage.$eval(
+          'input',
+          el => el.outerHTML,
+        );
 
         // Use fs module to write the HTML to a file
         fs.writeFileSync(`${basePath}/usernameHTML.html`, usernameHTML);
 
-        await this.page.waitForSelector('input[name="text"]', {
+        await currentPage.waitForSelector('input[name="text"]', {
           timeout: await this.randomDelay(60000),
         });
 
         console.log('Step: Fill in username');
         console.log(this.credentials.username);
 
-        await this.page.type('input[name="text"]', this.credentials.username);
-        await this.page.keyboard.press('Enter');
+        await currentPage.type('input[name="text"]', this.credentials.username);
+        await currentPage.keyboard.press('Enter');
         await new Promise(resolve => setTimeout(resolve, 10000));
 
-        const twitter_verify = await this.page
+        const twitter_verify = await currentPage
           .waitForSelector('input[data-testid="ocfEnterTextTextInput"]', {
             timeout: await this.randomDelay(5000),
             visible: true,
@@ -194,50 +197,50 @@ class Twitter extends Adapter {
           .catch(() => false);
 
         if (twitter_verify) {
-          const verifyURL = await this.page.url();
+          const verifyURL = await currentPage.url();
           console.log('Twitter verify needed, trying phone number');
           console.log('Step: Fill in phone number');
-          await this.page.type(
+          await currentPage.type(
             'input[data-testid="ocfEnterTextTextInput"]',
             this.credentials.phone,
           );
-          await this.page.keyboard.press('Enter');
+          await currentPage.keyboard.press('Enter');
 
           // add delay
           await new Promise(resolve => setTimeout(resolve, 3000));
         }
 
         // Select the div element by its aria-labelledby attribute
-        const passwordHTML = await this.page.$$eval('input', elements =>
+        const passwordHTML = await currentPage.$$eval('input', elements =>
           elements.map(el => el.outerHTML).join('\n'),
         );
 
         // Use fs module to write the HTML to a file
         fs.writeFileSync(`${basePath}/passwordHTML.html`, passwordHTML);
 
-        await this.page.waitForSelector('input[name="password"]');
+        await currentPage.waitForSelector('input[name="password"]');
         console.log('Step: Fill in password');
-        await this.page.type(
+        await currentPage.type(
           'input[name="password"]',
           this.credentials.password,
         );
         console.log('Step: Click login button');
-        await this.page.keyboard.press('Enter');
-        await this.page.waitForTimeout(await this.randomDelay(3000));
-        if (!(await this.checkLogin())) {
+        await currentPage.keyboard.press('Enter');
+        await currentPage.waitForTimeout(await this.randomDelay(3000));
+        if (!(await this.checkLogin(currentBrowser))) {
           console.log('Password is incorrect or email verification needed.');
-          await this.page.waitForTimeout(await this.randomDelay(5000));
+          await currentPage.waitForTimeout(await this.randomDelay(5000));
           this.sessionValid = false;
           process.exit(1);
-        } else if (await this.isEmailVerificationRequired(this.page)) {
+        } else if (await this.isEmailVerificationRequired(currentPage)) {
           console.log('Email verification required.');
           this.sessionValid = false;
-          await this.page.waitForTimeout(await this.randomDelay(10000));
+          await currentPage.waitForTimeout(await this.randomDelay(10000));
           process.exit(1);
         } else {
           console.log('Password is correct.');
-          this.page.waitForNavigation({ waitUntil: 'load' });
-          await this.page.waitForTimeout(await this.randomDelay(10000));
+          currentPage.waitForNavigation({ waitUntil: 'load' });
+          await currentPage.waitForTimeout(await this.randomDelay(10000));
 
           this.sessionValid = true;
           this.lastSessionCheck = Date.now();
@@ -245,7 +248,7 @@ class Twitter extends Adapter {
           console.log('Step: Login successful');
 
           // Extract cookies
-          const cookies = await this.page.cookies();
+          const cookies = await currentPage.cookies();
           // console.log('cookies', cookies);
           // Save cookies to database
           await this.saveCookiesToDB(cookies);
@@ -268,23 +271,23 @@ class Twitter extends Adapter {
     }
   };
 
-  tryLoginWithCookies = async () => {
+  tryLoginWithCookies = async currentPage => {
     const cookies = await this.db.getItem({ id: 'cookies' });
     if (cookies && cookies.data && cookies.data.length > 0) {
       // set the cookies
-      await this.page.setCookie(...cookies);
-      await this.page.goto('https://x.com/home');
-      await this.page.waitForTimeout(await this.randomDelay(5000));
+      await currentPage.setCookie(...cookies);
+      await currentPage.goto('https://x.com/home');
+      await currentPage.waitForTimeout(await this.randomDelay(5000));
 
       const isLoggedIn =
-        (await this.page.url()) !==
+        (await currentPage.url()) !==
           'https://x.com/i/flow/login?redirect_after_login=%2Fhome' &&
-        !(await this.page.url()).includes('https://x.com/?logout=');
+        !(await currentPage.url()).includes('https://x.com/?logout=');
 
       if (isLoggedIn) {
         console.log('Logged in using existing cookies');
         console.log('Updating last session check');
-        const cookies = await this.page.cookies();
+        const cookies = await currentPage.cookies();
         this.saveCookiesToDB(cookies);
         this.sessionValid = true;
         // Optionally, refresh or validate cookies here
@@ -299,22 +302,8 @@ class Twitter extends Adapter {
     }
   };
 
-  createNewPage = async () => {
-    let currentAttempt = 0;
-    while (currentAttempt < 3) {
-      try {
-        const newPage = await this.browser.newPage();
-        return newPage;
-      } catch (e) {
-        console.log('Error creating new page', e);
-        currentAttempt++;
-      }
-    }
-    return null;
-  };
-
-  checkLogin = async () => {
-    const newPage = await this.browser.newPage();
+  checkLogin = async currentBrowser => {
+    const newPage = await currentBrowser.newPage();
     await newPage.waitForTimeout(await this.randomDelay(8000));
     await newPage.goto('https://x.com/home');
     await newPage.waitForTimeout(await this.randomDelay(5000));
@@ -337,6 +326,35 @@ class Twitter extends Adapter {
     return this.sessionValid;
   };
 
+  isEmailVerificationRequired = async currentPage => {
+    // Wait for some time to allow the page to load the required elements
+    await currentPage.waitForTimeout(await this.randomDelay(5000));
+
+    // Check if the specific text is present on the page
+    const textContent = await currentPage.evaluate(
+      () => document.body.textContent,
+    );
+    return textContent.includes(
+      'Verify your identity by entering the email address associated with your X account.',
+    );
+  };
+
+  // create new page
+  createNewPage = async () => {
+    let currentAttempt = 0;
+    while (currentAttempt < 3) {
+      try {
+        const newPage = await this.browser.newPage();
+        return newPage;
+      } catch (e) {
+        console.log('Error creating new page', e);
+        currentAttempt++;
+      }
+    }
+    return null;
+  };
+
+  // save to db
   saveCookiesToDB = async cookies => {
     try {
       const data = await this.db.getItem({ id: 'cookies' });
@@ -348,19 +366,6 @@ class Twitter extends Adapter {
     } catch (e) {
       console.log('Error saving cookies to database', e);
     }
-  };
-
-  isEmailVerificationRequired = async page => {
-    // Wait for some time to allow the page to load the required elements
-    await page.waitForTimeout(await this.randomDelay(5000));
-
-    // Check if the specific text is present on the page
-    const textContent = await this.page.evaluate(
-      () => document.body.textContent,
-    );
-    return textContent.includes(
-      'Verify your identity by entering the email address associated with your X account.',
-    );
   };
 
   /**
@@ -441,8 +446,8 @@ class Twitter extends Adapter {
     return text.replace(/\s+/g, '').trim();
   };
 
-  postCommentAndCheckExistence = async (url, commentText) => {
-    const newPage = await this.browser.newPage();
+  postCommentAndCheckExistence = async (url, commentText, currentBrowser) => {
+    const newPage = await currentBrowser.newPage();
     await newPage.goto(url);
     await newPage.waitForTimeout(await this.randomDelay(8000));
 
@@ -451,7 +456,8 @@ class Twitter extends Adapter {
     commentText = await this.cleanText(commentText);
 
     while (hasMoreComments) {
-      await newPage.waitForTimeout(await this.randomDelay(3000));
+      await newPage.waitForTimeout(await this.randomDelay(4000));
+
       const existingComments = await newPage.evaluate(
         async cleanTextStr => {
           // Reconstruct the cleanText function inside the browser context
@@ -526,7 +532,29 @@ class Twitter extends Adapter {
         window.scrollTo(0, document.body.scrollHeight),
       );
       await newPage.waitForTimeout(await this.randomDelay(4000));
+      // click on the spam button to see the same comments
+      const showSpamButton = await newPage.evaluate(() => {
+        const buttons = Array.from(
+          document.querySelectorAll('button[role="button"]'),
+        );
 
+        // Log all buttons to the console
+        console.log(
+          'Buttons on the page:',
+          buttons.map(btn => btn.innerText),
+        );
+
+        return buttons.find(button =>
+          button.innerText.includes('Show probable spam'),
+        );
+      });
+
+      console.log(showSpamButton);
+
+      if (showSpamButton) {
+        await newPage.evaluate(button => button.click(), showSpamButton);
+        await newPage.waitForTimeout(await this.randomDelay(3000));
+      }
       const currentScrollHeight = await newPage.evaluate(
         () => document.body.scrollHeight,
       );
@@ -540,7 +568,7 @@ class Twitter extends Adapter {
   };
 
   getTheCommentDetails = async (url, commentText) => {
-    const commentPage = await this.browser.newPage();
+    const commentPage = await currentBrowser.newPage();
     await commentPage.goto(url);
     await commentPage.waitForTimeout(await this.randomDelay(8000));
 
@@ -679,7 +707,7 @@ class Twitter extends Adapter {
    * @description - this function should parse the item at the given url and return the parsed item data
    *               according to the query object and for use in either search() or validate()
    */
-  parseItem = async (item, comment, url) => {
+  parseItem = async (item, comment, url, currentPage, currentBrowser) => {
     if (this.sessionValid == false) {
       await this.negotiateSession();
     }
@@ -703,34 +731,8 @@ class Twitter extends Adapter {
         .find('div[data-testid="tweetText"]')
         .first()
         .text();
-      const outerMediaElements = $(el).find('div[data-testid="tweetText"] a');
-      const outer_media_urls = [];
-      const outer_media_short_urls = [];
-      outerMediaElements.each(function () {
-        const fullURL = $(this).attr('href');
-        const shortURL = $(this).text().replace(/\s/g, '');
-
-        // Ignore URLs containing "/search?q=" or "x.com"
-        if (
-          fullURL &&
-          !fullURL.includes('/search?q=') &&
-          !fullURL.includes('twitter.com') &&
-          !fullURL.includes('x.com') &&
-          !fullURL.includes('/hashtag/')
-        ) {
-          outer_media_urls.push(fullURL);
-          outer_media_short_urls.push(shortURL);
-        }
-      });
       const timeRaw = $(el).find('time').attr('datetime');
       const time = await this.convertToTimestamp(timeRaw);
-      const tweet_record = $(el).find(
-        'span[data-testid="app-text-transition-container"]',
-      );
-      const commentCount = tweet_record.eq(0).text();
-      const likeCount = tweet_record.eq(1).text();
-      const shareCount = tweet_record.eq(2).text();
-      const viewCount = tweet_record.eq(3).text();
       // this is for the hash and salt
       const tweets_content = tweet_text.replace(/\n/g, '<br>');
       const round = namespaceWrapper.getRound();
@@ -740,17 +742,18 @@ class Twitter extends Adapter {
       const hash = bcrypt.hashSync(originData, salt);
 
       // wait for sometime
-      await this.page.waitForTimeout(await this.randomDelay(4000));
+      await currentPage.waitForTimeout(await this.randomDelay(4000));
       // open new page
-      const commentPage = await this.browser.newPage();
+      const commentPage = await currentBrowser.newPage();
       const getNewPageUrl = `${url}/status/${tweetId}`;
       await commentPage.goto(getNewPageUrl);
-      await this.page.waitForTimeout(await this.randomDelay(8000));
+      await commentPage.waitForTimeout(await this.randomDelay(8000));
 
       // check if already comments or not
       const getBoolComments = await this.postCommentAndCheckExistence(
         getNewPageUrl,
         comment,
+        currentBrowser,
       );
       if (getBoolComments) {
         await commentPage.close();
@@ -761,7 +764,6 @@ class Twitter extends Adapter {
       await commentPage.waitForTimeout(await this.randomDelay(3000));
       const writeSelector =
         'div[data-testid="tweetTextarea_0RichTextInputContainer"]';
-
       await commentPage.evaluate(writeSelector => {
         const element = document.querySelector(writeSelector);
         if (element) {
@@ -791,6 +793,7 @@ class Twitter extends Adapter {
       const getCommentDetailsObject = await this.getTheCommentDetails(
         getNewPageUrl,
         comment,
+        currentBrowser,
       );
 
       // close the comment page
@@ -815,12 +818,6 @@ class Twitter extends Adapter {
           tweets_content: tweets_content,
           time_post: time,
           time_read: Date.now(),
-          comment: commentCount,
-          like: likeCount,
-          share: shareCount,
-          view: viewCount,
-          outer_media_url: outer_media_urls,
-          outer_media_short_url: outer_media_short_urls,
           keyword: this.searchTerm,
           hash: hash,
           commentDetails: getCommentDetailsObject,
@@ -868,7 +865,7 @@ class Twitter extends Adapter {
 
   checkCommentTimestamp = (currentTimeStamp, Timestamp) => {
     try {
-      const HOURS_OPTIONS = [21, 22, 23, 24, 25, 26, 27];
+      const HOURS_OPTIONS = [22, 24, 26];
       const getRandomHours = options =>
         options[Math.floor(Math.random() * options.length)];
       const HOURS_IN_MS = 60 * 60 * 1000;
@@ -958,7 +955,13 @@ class Twitter extends Adapter {
               }
             }
 
-            let data = await this.parseItem(item, comment, url);
+            let data = await this.parseItem(
+              item,
+              comment,
+              url,
+              this.page,
+              this.browser,
+            );
             if (data.tweets_id) {
               let checkItem = {
                 id: data.tweets_id,
@@ -1039,80 +1042,189 @@ class Twitter extends Adapter {
    * @param {*} item
    * @returns
    */
-  retrieveItem = async (verify_page, tweetid, comment, url) => {
-    console.log(verify_page);
-    console.log(tweetid);
-    console.log(comment);
-    console.log(url);
+  retrieveItem = async (verify_page, comment) => {
     try {
-      let i = 0;
-      while (true) {
-        i++;
-        // // Check if the error message is present on the page inside an article element
-        const errorMessage = await verify_page.evaluate(() => {
-          const elements = document.querySelectorAll('div[dir="ltr"]');
-          for (let element of elements) {
-            if (
-              element.textContent === 'Something went wrong. Try reloading.'
-            ) {
-              return true;
-            }
-          }
-          return false;
-        });
+      const items = await verify_page.evaluate(() => {
+        const elements = document.querySelectorAll('article[aria-labelledby]');
+        return Array.from(elements).map(element => element.outerHTML);
+      });
 
-        // Archive the tweets
-        const items = await verify_page.evaluate(() => {
-          const elements = document.querySelectorAll(
-            'article[aria-labelledby]',
+      await verify_page.waitForTimeout(await this.randomDelay(4000));
+      await verify_page.evaluate(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+      await verify_page.waitForTimeout(await this.randomDelay(4000));
+
+      const $ = cheerio.load(items[0]);
+      const articles = $('article[data-testid="tweet"]').toArray();
+      const el = articles[0];
+      const tweetUrl = $('a[href*="/status/"]').attr('href');
+      const tweetId = tweetUrl.split('/').pop();
+
+      // get the other info about the article
+      const screen_name = $(el).find('a[tabindex="-1"]').text();
+      const allText = $(el).find('a[role="link"]').text();
+      const user_name = allText.split('@')[0];
+      const user_url =
+        'https://x.com' + $(el).find('a[role="link"]').attr('href');
+      const user_img = $(el).find('img[draggable="true"]').attr('src');
+      const tweet_text = $(el)
+        .find('div[data-testid="tweetText"]')
+        .first()
+        .text();
+      const timeRaw = $(el).find('time').attr('datetime');
+      const time = await this.convertToTimestamp(timeRaw);
+      // this is for the hash and salt
+      const tweets_content = tweet_text.replace(/\n/g, '<br>');
+      const round = namespaceWrapper.getRound();
+      const originData = tweets_content + round;
+      const saltRounds = 10;
+      const salt = bcrypt.genSaltSync(saltRounds);
+      const hash = bcrypt.hashSync(originData, salt);
+
+      // wait for sometime
+      await verify_page.waitForTimeout(await this.randomDelay(4000));
+      await verify_page.evaluate(() => {
+        window.scrollTo({
+          top: document.body.scrollHeight,
+          behavior: 'smooth',
+        });
+      });
+      await verify_page.waitForTimeout(await this.randomDelay(4000));
+
+      // get the comment details
+      let trimCommentText = await this.cleanText(comment);
+      const commentDetails = await verify_page.evaluate(
+        async cleanTextStr => {
+          const cleanText = new Function('return ' + cleanTextStr)();
+
+          const tweetElements = Array.from(
+            document.querySelectorAll('article[data-testid="tweet"]'),
           );
-          return Array.from(elements).map(element => element.outerHTML);
-        });
+          const details = [];
+          await Promise.all(
+            tweetElements.map(async tweetElement => {
+              let commentId = null;
+              let username = null;
+              let postTime = null;
 
-        let temp = null;
-        // Reason why many tweets: The given link might contain a main tweet and its comments, and the input task id might be one of the comments task id
-        for (const item of items) {
-          await new Promise(resolve => setTimeout(resolve, 1000)); // Adds a 1-second delay
-          try {
-            let data = await this.parseItem(item, comment, url);
-            console.log(data);
-            console.log(data.tweets_id);
-            console.log(tweetid);
-            if (data.tweets_id == tweetid) {
-              return data;
-            } else {
-              console.log('tweets id diff, continue');
-            }
-            if (data.tweets_id == '1') {
-              temp = data;
-            }
-          } catch (e) {
-            console.log(e);
-            console.log(
-              'Filtering advertisement tweets; continuing to the next item.',
-            );
-          }
-        }
+              const textElement = tweetElement.querySelector('div[lang]');
+              let textContent = '';
+              if (textElement && textElement.childNodes) {
+                textElement.childNodes.forEach(node => {
+                  let content = '';
 
-        return temp;
+                  if (node.nodeName === 'IMG') {
+                    content = node.alt || '';
+                  } else {
+                    content = node.innerText || node.textContent;
+                  }
+
+                  // Check if content is not null, undefined, or empty
+                  if (content) {
+                    textContent += content;
+                  }
+                });
+              }
+
+              const timeElements = Array.from(
+                tweetElement.querySelectorAll('time[datetime]'),
+              );
+              console.log('timeElements :::: ', timeElements);
+
+              if (timeElements.length > 0) {
+                timeElements.forEach(async timeElement => {
+                  const anchorElement = timeElement.closest('a');
+
+                  console.log('anchorElement ::', anchorElement);
+
+                  if (anchorElement) {
+                    const urlMatch = anchorElement.href.match(
+                      /^https?:\/\/[^\/]+\/([^\/]+)\/status\/(\d+)$/,
+                    );
+                    username = urlMatch ? urlMatch[1] : null;
+                    commentId = urlMatch ? urlMatch[2] : null;
+                    postTime = timeElement.getAttribute('datetime');
+                  }
+                });
+              }
+
+              await new Promise(resolve => setTimeout(resolve, 10000));
+
+              if (textContent) {
+                try {
+                  const getComments = await cleanText(textContent);
+                  details.push({
+                    commentId,
+                    getComments,
+                    username,
+                    postTime,
+                  });
+                } catch (error) {
+                  console.error('Error processing comment:', error);
+                }
+              }
+            }),
+          );
+          return details;
+        },
+        this.cleanText.toString(),
+        trimCommentText,
+      );
+
+      // update the post time
+      for (let item of commentDetails) {
+        item.postTime = await this.convertToTimestamp(item.postTime);
       }
+
+      // Check if the comment already exists
+      const foundItem = commentDetails.find(item =>
+        item.getComments.toLowerCase().includes(trimCommentText.toLowerCase()),
+      );
+
+      if (foundItem) {
+        const found = !!foundItem;
+        if (found) {
+          console.log('AUDITS :::: Comment found. ');
+          foundItem.getComments = comment;
+        }
+      } else {
+        return null;
+      }
+      // get the object
+      const data = {
+        user_name: user_name,
+        screen_name: screen_name,
+        user_url: user_url,
+        user_img: user_img,
+        tweets_id: tweetId,
+        tweets_content: tweets_content,
+        time_post: time,
+        time_read: Date.now(),
+        hash: hash,
+        commentDetails: foundItem,
+      };
+      return data;
     } catch (e) {
       console.log('Last round fetching list stop', e);
       return;
     }
   };
 
-  verify = async (tweetid, inputitem, round) => {
+  verify = async (inputItem, round) => {
     console.log('----Input Item Below -----');
-    console.log(inputitem);
+    console.log(inputItem);
     console.log('----Input Item Above -----');
     try {
       const options = {};
       const userAuditDir = path.join(
         __dirname,
-        'puppeteer_cache_koii_twitter_archive_audit',
+        'puppeteer_cache_AIC_twitter_archive_audit',
       );
       const stats = await PCR(options);
+      console.log(
+        '*****************************************CALLED PURCHROMIUM VERIFIER*****************************************',
+      );
       let auditBrowser = await stats.puppeteer.launch({
         executablePath: stats.executablePath,
         userDataDir: userAuditDir,
@@ -1130,8 +1242,24 @@ class Twitter extends Adapter {
           '--disable-gpu',
         ],
       });
-      const url = `${inputitem.user_url}/status/${tweetid}`;
+      console.log('Step: Open new page');
       const verify_page = await auditBrowser.newPage();
+      await verify_page.setUserAgent(
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+      );
+      await verify_page.waitForTimeout(await this.randomDelay(3000));
+      const screenWidth = await verify_page.evaluate(() => window.screen.width);
+      const screenHeight = await verify_page.evaluate(
+        () => window.screen.height,
+      );
+      await verify_page.setViewport({
+        width: screenWidth,
+        height: screenHeight,
+      });
+      await verify_page.waitForTimeout(await this.randomDelay(3000));
+      await this.twitterLogin(verify_page, auditBrowser);
+      // complete login first then redirect to the tweet page
+      const url = `https://x.com/${inputItem.commentDetails.username}/status/${inputItem.commentDetails.commentId}`;
       await verify_page.goto(url, { timeout: 60000 });
       await new Promise(resolve => setTimeout(resolve, 5000));
       let confirmed_no_tweet = false;
@@ -1143,46 +1271,104 @@ class Twitter extends Adapter {
       });
 
       if (confirmed_no_tweet) {
-        return false; // Return false if error-detail is found
+        return false;
       }
       console.log('Retrieve item for', url);
       const result = await this.retrieveItem(
         verify_page,
-        tweetid,
-        inputitem.commentDetails.getComments,
-        inputitem.user_url,
+        inputItem.commentDetails.getComments,
       );
+
+      console.log(result);
+
       if (result) {
-        if (result.tweets_content != inputitem.tweets_content) {
+        if (result.tweets_content != inputItem.tweets_content) {
           console.log(
             'Content not match',
             result.tweets_content,
-            inputitem.tweets_content,
+            inputItem.tweets_content,
           );
           auditBrowser.close();
           return false;
         }
-        if (result.time_read - inputitem.time_read > 3600000 * 15) {
+        if (result.time_read - inputItem.time_read > 3600000 * 26) {
           console.log(
             'Time read difference too big',
             result.time_read,
-            inputitem.time_read,
+            inputItem.time_read,
           );
           auditBrowser.close();
           return false;
         }
         const dataToCompare = result.tweets_content + round;
-
-        const hashCompare = bcrypt.compareSync(dataToCompare, inputitem.hash);
+        const hashCompare = bcrypt.compareSync(dataToCompare, inputItem.hash);
         if (hashCompare == false) {
           console.log(
             'Hash Verification Failed',
             dataToCompare,
-            inputitem.hash,
+            inputItem.hash,
           );
           auditBrowser.close();
           return false;
         }
+
+        // check all the comment details in audits
+        if (
+          result.commentDetails.commentId != inputItem.commentDetails.commentId
+        ) {
+          console.log(
+            'Comment Not Found',
+            result.commentDetails.commentId,
+            inputItem.commentDetails.commentId,
+          );
+          auditBrowser.close();
+          return false;
+        }
+        if (
+          [...new Set(result.commentDetails.getComments.toLowerCase())].join(
+            '',
+          ) !==
+          [...new Set(inputItem.commentDetails.getComments.toLowerCase())].join(
+            '',
+          )
+        ) {
+          console.log(
+            'Comments are not the same',
+            result.commentDetails.getComments,
+            inputItem.commentDetails.getComments,
+          );
+          auditBrowser.close();
+          return false;
+        }
+        if (
+          result.commentDetails.username != inputItem.commentDetails.username
+        ) {
+          console.log(
+            'username is not matched',
+            result.commentDetails.username,
+            inputItem.commentDetails.username,
+          );
+          auditBrowser.close();
+          return false;
+        }
+
+        // get the comment postTime time difference
+        const timeDifference =
+          Math.abs(
+            result.commentDetails.postTime - inputItem.commentDetails.postTime,
+          ) * 1000;
+
+        // Check if the difference is more than 15 minutes
+        if (timeDifference > 15 * 60 * 1000) {
+          console.log(
+            'Post times differ by more than 15 minutes.',
+            result.commentDetails.postTime,
+            inputItem.commentDetails.postTime,
+          );
+          auditBrowser.close();
+          return false;
+        }
+
         auditBrowser.close();
         return true;
       }

@@ -186,9 +186,7 @@ class TwitterTask {
     // in order to validate, we need to take the proofCid
     // and go get the results from IPFS
     try {
-      let data = await getJSONFromCID(proofCid, 'dataList.json'); // check this
-      // console.log(`validate got results for CID: ${ proofCid } for round ${ roundID }`, data, typeof(data), data[0]);
-      // Check for duplicate item IDs
+      let data = await getJSONFromCID(proofCid, 'dataList.json');
       let idSet = new Set();
       let duplicatedIDNumber = 0;
       for (let item of data) {
@@ -208,7 +206,7 @@ class TwitterTask {
         );
       }
 
-      let proofThreshold = 8; // an arbitrary number of records to check
+      let proofThreshold = 8;
       let passedNumber = 0;
       if (data && data !== null && data.length > 0) {
         for (let i = 0; i < proofThreshold; i++) {
@@ -218,11 +216,7 @@ class TwitterTask {
 
           if (item.id) {
             await new Promise(resolve => setTimeout(resolve, 30000));
-            const result = await this.adapter.verify(
-              item.data.tweets_id,
-              item.data,
-              round,
-            );
+            const result = await this.adapter.verify(item.data, round);
             console.log('Result from verify', result);
             if (result) {
               passedNumber += 1;

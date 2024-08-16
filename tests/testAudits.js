@@ -22,55 +22,49 @@
 
 const Twitter = require('../adapters/twitter/twitter.js');
 const bcrypt = require('bcryptjs');
+const Data = require('../model/data');
 
 const credentials = {
   username: process.env.TWITTER_USERNAME,
   password: process.env.TWITTER_PASSWORD,
   phone: process.env.TWITTER_PHONE,
 };
-const db = {}; // Replace with your actual database instance or mock
+const db = new Data('db', []);
 const maxRetry = 3;
 
-const twitterInstance = new Twitter(credentials, db, maxRetry);
+const twitterInstance = new Twitter(
+  credentials,
+  db,
+  maxRetry,
+  'koii network 🛋️🛋️🛋️',
+);
 
 (async () => {
-  await twitterInstance.negotiateSession();
-
-  setTimeout(() => {
-    console.log('This message is displayed after 2 seconds');
-  }, 90000);
-
   try {
-    const tweetID = '1819050907293655444';
-
     const webresult = {
-      id: '1819050907293655444',
-      round: 1,
+      id: '1822245059627978849',
+      round: 44,
       data: {
         user_name: 'JD Vance',
         screen_name: '@JDVance',
         user_url: 'https://x.com/JDVance',
+        user_img:
+          'https://pbs.twimg.com/profile_images/1817220042578173953/5r-Qpvgt_normal.jpg',
         tweets_id: '1819050907293655444',
         tweets_content:
           'Our border czar Kamala Harris opened up the border by design. Now real people are suffering.',
         time_post: 1722530507,
-        time_read: 1722951699864,
-        comment: '4K',
-        like: '5.2K',
-        share: '19K',
-        view: '1M',
-        outer_media_url: [],
-        outer_media_short_url: [],
+        time_read: 1723600284668,
         keyword: 'JDVance',
-        hash: '$2a$10$4hcJxxgvP9kJ88RZxWfDCOMeVzHRmLELLfcl2X0Dq3szim42vhL3G',
+        hash: '$2a$10$l3rO0axR4Q3dYicO0NhhreQZ/hT6/QGxOmxTbVrTYWq3DfXVnGcLm',
         commentDetails: {
-          commentId: '1820817341976060211',
-          getComments: 'koii network 🛋️🛋️🛋️',
-          username: 'TruongCat5899',
-          postTime: 1722951658,
+          commentId: '1822245059627978844',
+          getComments: 'apple 🛋️🛋️🛋️',
+          username: 'museowunsaram',
+          postTime: 1723292052,
         },
       },
-      _id: 'wVVWrAhcw6rB8gWI',
+      _id: '0HarrHW6o6UGl2NO',
     };
 
     const originData = webresult.data.tweets_content + webresult.data.time_post;
@@ -83,7 +77,7 @@ const twitterInstance = new Twitter(credentials, db, maxRetry);
     const datajson = parsedData.data;
 
     console.log(retrievedJSON);
-    const result = await twitterInstance.verify(tweetID, datajson);
+    const result = await twitterInstance.verify(datajson, 2);
     console.log(result);
   } catch (error) {
     console.error('Error:', error);
