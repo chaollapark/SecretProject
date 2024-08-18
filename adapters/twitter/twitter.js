@@ -18,7 +18,7 @@ const bcrypt = require('bcryptjs');
  */
 
 class Twitter extends Adapter {
-  constructor(credentials, db, maxRetry, comment) {
+  constructor(credentials, db, maxRetry, comment, meme) {
     super(credentials, maxRetry);
     this.credentials = credentials;
     this.db = new Data('db', []);
@@ -39,6 +39,7 @@ class Twitter extends Adapter {
     this.round = null;
     this.maxRetry = maxRetry;
     this.comment = comment;
+    this.meme = meme;
   }
 
   /**
@@ -426,18 +427,30 @@ class Twitter extends Adapter {
     }
   };
 
-  humanType = async (page, selector, text) => {
+  humanType = async (page, selector, text, meme) => {
     for (const char of text) {
       await page.type(selector, char);
-      const typingSpeed = Math.random() * 100 + 30;
+      const typingSpeed = Math.random() * 200 + 70;
       await page.waitForTimeout(typingSpeed);
 
       // Randomly add longer pauses to mimic thinking
       if (Math.random() < 0.1) {
-        const thinkingPause = Math.random() * 1000 + 200;
+        const thinkingPause = Math.random() * 2000 + 300;
         await page.waitForTimeout(thinkingPause);
       }
     }
+
+    console.log('memePath ::: ', meme);
+    await page.waitForSelector('button[aria-label="Add photos or video"]');
+    const [fileChooser] = await Promise.all([
+      page.waitForFileChooser(),
+      page.click('button[aria-label="Add photos or video"]'),
+    ]);
+    await page.waitForTimeout(await this.randomDelay(4000));
+    await fileChooser.accept([meme]);
+    await page.waitForTimeout(await this.randomDelay(6000));
+    await page.waitForSelector('img[src^="blob:"]');
+    await page.waitForTimeout(await this.randomDelay(3000));
     console.log(`Finished typing. Waiting for additional delay`);
   };
 
@@ -567,7 +580,7 @@ class Twitter extends Adapter {
     return false;
   };
 
-  getTheCommentDetails = async (url, commentText) => {
+  getTheCommentDetails = async (url, commentText, currentBrowser) => {
     const commentPage = await currentBrowser.newPage();
     await commentPage.goto(url);
     await commentPage.waitForTimeout(await this.randomDelay(8000));
@@ -707,7 +720,7 @@ class Twitter extends Adapter {
    * @description - this function should parse the item at the given url and return the parsed item data
    *               according to the query object and for use in either search() or validate()
    */
-  parseItem = async (item, comment, url, currentPage, currentBrowser) => {
+  parseItem = async (item, comment, url, currentPage, currentBrowser, meme) => {
     if (this.sessionValid == false) {
       await this.negotiateSession();
     }
@@ -750,15 +763,16 @@ class Twitter extends Adapter {
       await commentPage.waitForTimeout(await this.randomDelay(8000));
 
       // check if already comments or not
-      const getBoolComments = await this.postCommentAndCheckExistence(
-        getNewPageUrl,
-        comment,
-        currentBrowser,
-      );
-      if (getBoolComments) {
-        await commentPage.close();
-        return data;
-      }
+      // TODO FIX THIS BASED ON THE MEME
+      // const getBoolComments = await this.postCommentAndCheckExistence(
+      //   getNewPageUrl,
+      //   comment,
+      //   currentBrowser,
+      // );
+      // if (getBoolComments) {
+      //   await commentPage.close();
+      //   return data;
+      // }
 
       // write a comment and post
       await commentPage.waitForTimeout(await this.randomDelay(3000));
@@ -774,7 +788,7 @@ class Twitter extends Adapter {
       await commentPage.waitForSelector(writeSelector);
       await commentPage.click(writeSelector);
       await commentPage.waitForTimeout(await this.randomDelay(6000));
-      await this.humanType(commentPage, writeSelector, comment);
+      await this.humanType(commentPage, writeSelector, comment, meme);
       await commentPage.waitForTimeout(await this.randomDelay(8000));
       // button for post the comment
       await commentPage.evaluate(async () => {
@@ -849,7 +863,8 @@ class Twitter extends Adapter {
       this.searchTerm = query.searchTerm;
       this.round = query.round;
       this.comment = query.comment;
-      await this.fetchList(query.query, query.round, query.comment);
+      this.meme = query.meme;
+      await this.fetchList(query.query, query.round, query.comment, query.meme);
     } else {
       await this.negotiateSession();
     }
@@ -890,7 +905,7 @@ class Twitter extends Adapter {
    * @returns {Promise<string[]>}
    * @description Fetches a list of links from a given url
    */
-  fetchList = async (url, round, comment) => {
+  fetchList = async (url, round, comment, meme) => {
     try {
       console.log('fetching list for ', url);
       // Go to the hashtag page
@@ -940,7 +955,6 @@ class Twitter extends Adapter {
               comment,
             );
             console.log('getCommentTimeStamp :: ', getCommentTimeStamp);
-
             if (getCommentTimeStamp) {
               // get the timestamp
               const currentTimeStamp = await this.getCurrentTimestamp();
@@ -961,6 +975,7 @@ class Twitter extends Adapter {
               url,
               this.page,
               this.browser,
+              meme,
             );
             if (data.tweets_id) {
               let checkItem = {

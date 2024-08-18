@@ -1,9 +1,9 @@
 # Name and metadata of your task
-task_name: 'AssholeInChief'
-author: 'AIC'
-description: "Volunteer your spare Twitter account and join our mission to hold politicians accountable and shake up the status quo! We're on a quest to spotlight and confront public figures who fall short of integrity and responsibility. By diving into this initiative, you'll play a crucial role in exposing crucial issues and shaking up the political landscape. Please note that we only make one post per account every 24 hours. The task involves posting one (1) comment per day, which will look like:  '(TWITTER_COMMENTS) + 🛋🛋🛋'. Before participating, please ensure that your volunteer Twitter account has passed the verification process. There are no rewards for this task right now, but we are planning events and bounties."
+task_name: 'RELEASE D RATS'
+author: 'RDR'
+description: "Volunteer your spare Twitter account and join our mission to make crypto better! We're on a quest to spotlight and confront bad actors in crypto - right now Logan Paul. In this initiative, you'll play a crucial role in exposing crucial issues and pop Turing the spotlight on bad actors . Please note that we only make one post per account every 24 hours. The task involves posting one (1) comment per day, which will look like: '(meme) + :egg::hatching_chick::egg:'. Before participating, please ensure that your volunteer Twitter account has passed the verification process. There are no rewards for this task right now, but we are planning events and bounties."
 repositoryUrl: 'https://github.com/chaollapark/SecretProject/'
-imageUrl: 'https://ipfs-gateway.koii.live/ipfs/bafybeidqyigsevqzkxiuprzxipbakvf54gxe4ft427wxb5v5wbj54epdo4/AssholeInChief.png'
+imageUrl: 'https://ipfs-gateway.koii.live/ipfs/bafybeicjcwdlindssoexzuzhhmrgcvdjkzbez3ure25rnuv6xzhet4gkc4/RELEASEDRATS.png'
 
 # network value can be DEVELOPMENT , ARWEAVE or IPFS, Recommended IPFS when deploying to testnet as the cli automatically takes care of uploading the executable with the help of web3.js key
 task_executable_network: 'IPFS'
@@ -13,9 +13,8 @@ task_audit_program: 'dist/main.js'
 
 # Total round time of your task : it must be given in slots and each slot is roughly equal to 408ms
 round_time: 33500
-
-audit_window: 5000
-submission_window: 5000
+audit_window: 11500
+submission_window: 11500
 
 # Amounts in KOII
 minimum_stake_amount: 1.9
@@ -45,9 +44,6 @@ requirementsTags:
   - type: TASK_VARIABLE
     value: 'TWITTER_PHONE'
     description: 'If verification is required, will use your phone number to login.'
-  - type: TASK_VARIABLE
-    value: 'TWITTER_COMMENTS'
-    description: 'Add the comments you need to post on Twitter.'
   - type: CPU
     value: '4-core'
   - type: RAM
@@ -56,7 +52,7 @@ requirementsTags:
     value: '5 GB'
 
 # OPTIONAL Only provide the taskId if you are updating the task otherwise leave blank
-task_id: '5QRrz2GVsLgUwdBWBnybFnfGdCNj87zcnNiB1SJN6ZTC'
+task_id: ''
 
 # Provide the description for changes made in new version of task
-migrationDescription: 'update the description'
+migrationDescription: ''

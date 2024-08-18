@@ -2,8 +2,9 @@ const Twitter = require('./adapters/twitter/twitter.js');
 const Data = require('./model/data');
 const { KoiiStorageClient } = require('@_koii/storage-task-sdk');
 const dotenv = require('dotenv');
-// const { default: axios } = require('axios');
 const { CID } = require('multiformats/cid');
+const path = require('path');
+const fs = require('fs');
 
 async function isValidCID(cid) {
   try {
@@ -47,7 +48,6 @@ class TwitterTask {
     this.isRunning = false;
     this.searchTerm = [];
     this.adapter = null;
-    this.comment = '';
     this.db = new Data('db', []);
     this.db.initializeData();
     this.initialize();
@@ -56,7 +56,6 @@ class TwitterTask {
       const username = process.env.TWITTER_USERNAME;
       const password = process.env.TWITTER_PASSWORD;
       const phone = process.env.TWITTER_PHONE;
-      const comment = process.env.TWITTER_COMMENTS;
 
       if (!username || !password) {
         throw new Error(
@@ -64,11 +63,13 @@ class TwitterTask {
         );
       }
 
-      if (!comment || comment.trim().length === 0) {
-        throw new Error('Environment variables TWITTER_COMMENTS is not set');
-      }
+      // get the random meme
+      this.memeFolder = path.join(__dirname, 'memes');
+      this.memePath = await this.getRandomMeme();
 
-      this.comment = comment;
+      if (!this.memePath) {
+        throw new Error('Failed to get a valid meme path.');
+      }
 
       let credentials = {
         username: username,
@@ -76,11 +77,33 @@ class TwitterTask {
         phone: phone,
       };
 
-      this.adapter = new Twitter(credentials, this.db, 3, comment);
+      const comment = `🥚🥚🥚 #StopScamming @loganpaul @releaseDrats `;
+      this.adapter = new Twitter(
+        credentials,
+        this.db,
+        3,
+        comment,
+        this.memePath,
+      );
       await this.adapter.negotiateSession();
     };
 
     this.start();
+  }
+
+  // select random memes
+  async getRandomMeme() {
+    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif'];
+    const memes = fs.readdirSync(this.memeFolder).filter(file => {
+      return allowedExtensions.some(ext => file.toLowerCase().endsWith(ext));
+    });
+
+    if (memes.length === 0) {
+      throw new Error('No meme images found in the folder.');
+    }
+
+    let randomMeme = memes[Math.floor(Math.random() * memes.length)];
+    return path.join(this.memeFolder, randomMeme);
   }
 
   async initialize() {
@@ -103,7 +126,7 @@ class TwitterTask {
   async fetchSearchTerms() {
     let keyword;
     try {
-      const getUserProfile = process.env.TWITTER_PROFILE || 'JDVance';
+      const getUserProfile = process.env.TWITTER_PROFILE || 'PrimeHydrate';
       if (!getUserProfile || getUserProfile.trim().length === 0) {
         throw new Error('Environment variables TWITTER_PROFILE is not set');
       }
@@ -134,7 +157,8 @@ class TwitterTask {
       limit: 100,
       searchTerm: this.searchTerm,
       query: `https://twitter.com/${this.searchTerm}`,
-      comment: `${this.comment} 🛋️🛋️🛋️`,
+      comment: `🥚🐣🥚 #StopScamming @loganpaul @releaseDrats `,
+      meme: this.memePath,
       depth: 3,
       round: this.round,
       recursive: true,
