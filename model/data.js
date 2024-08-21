@@ -116,11 +116,12 @@ class Data {
    * createSearchTerm
    * @description creates a search term for the database
    */
-  async createSearchTerm(searchTerms, round) {
+  async createSearchTerm(searchTerms, round, randomComment) {
     try {
       const objToInsert = {
         termRound: round,
         terms: searchTerms,
+        comment: randomComment,
       };
       await this.db.insert(objToInsert);
       console.log('Search terms inserted for round', round);

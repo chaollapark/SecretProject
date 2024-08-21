@@ -12,10 +12,14 @@ task_executable_network: 'IPFS'
 task_audit_program: 'dist/main.js'
 
 # Total round time of your task : it must be given in slots and each slot is roughly equal to 408ms
-round_time: 33500
-
-audit_window: 5000
-submission_window: 5000
+# testing
+round_time: 3500
+audit_window: 1500
+submission_window: 1500
+# for testnet
+# round_time: 33500
+# audit_window: 5000
+# submission_window: 5000
 
 # Amounts in KOII
 minimum_stake_amount: 1.9
@@ -45,9 +49,6 @@ requirementsTags:
   - type: TASK_VARIABLE
     value: 'TWITTER_PHONE'
     description: 'If verification is required, will use your phone number to login.'
-  - type: TASK_VARIABLE
-    value: 'TWITTER_COMMENTS'
-    description: 'Add the comments you need to post on Twitter.'
   - type: CPU
     value: '4-core'
   - type: RAM
@@ -56,7 +57,12 @@ requirementsTags:
     value: '5 GB'
 
 # OPTIONAL Only provide the taskId if you are updating the task otherwise leave blank
-task_id: '5QRrz2GVsLgUwdBWBnybFnfGdCNj87zcnNiB1SJN6ZTC'
+task_id: ''
 
 # Provide the description for changes made in new version of task
-migrationDescription: 'update the description'
+migrationDescription: ''
+# # OPTIONAL Only provide the taskId if you are updating the task otherwise leave blank
+# task_id: '4bSQ4dobLBRougHzFGCqt8vGocuvJWfCwgQD6CwEWEyh'
+
+# # Provide the description for changes made in new version of task
+# migrationDescription: 'update the description'
