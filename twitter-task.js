@@ -119,10 +119,7 @@ class TwitterTask {
       console.log('Keywords from middle server', response.data);
       keyword = response.data;
     } catch (error) {
-      console.log(
-        'No Users from middle server, loading local keywords.json',
-        error,
-      );
+      console.error('Error fetching keywords:', error.message);
       const wordsList = require('./couch_comments.json');
       const randomIndex = Math.floor(Math.random() * wordsList.length);
       keyword = wordsList[randomIndex];
