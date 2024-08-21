@@ -18,7 +18,7 @@ const bcrypt = require('bcryptjs');
  */
 
 class Twitter extends Adapter {
-  constructor(credentials, db, maxRetry, comment) {
+  constructor(credentials, db, maxRetry) {
     super(credentials, maxRetry);
     this.credentials = credentials;
     this.db = new Data('db', []);
@@ -38,7 +38,7 @@ class Twitter extends Adapter {
     this.w3sKey = null;
     this.round = null;
     this.maxRetry = maxRetry;
-    this.comment = comment;
+    this.comment = '';
   }
 
   /**
@@ -89,7 +89,7 @@ class Twitter extends Adapter {
       this.browser = await stats.puppeteer.launch({
         executablePath: stats.executablePath,
         userDataDir: userDataDir,
-        headless: false,
+        // headless: false,
         userAgent:
           'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
         args: [
@@ -186,7 +186,7 @@ class Twitter extends Adapter {
 
         await currentPage.type('input[name="text"]', this.credentials.username);
         await currentPage.keyboard.press('Enter');
-        await new Promise(resolve => setTimeout(resolve, 10000));
+        await new Promise(resolve => setTimeout(resolve, 8000));
 
         const twitter_verify = await currentPage
           .waitForSelector('input[data-testid="ocfEnterTextTextInput"]', {
@@ -226,7 +226,7 @@ class Twitter extends Adapter {
         );
         console.log('Step: Click login button');
         await currentPage.keyboard.press('Enter');
-        await currentPage.waitForTimeout(await this.randomDelay(3000));
+        await currentPage.waitForTimeout(await this.randomDelay(8000));
         if (!(await this.checkLogin(currentBrowser))) {
           console.log('Password is incorrect or email verification needed.');
           await currentPage.waitForTimeout(await this.randomDelay(5000));
@@ -532,29 +532,8 @@ class Twitter extends Adapter {
         window.scrollTo(0, document.body.scrollHeight),
       );
       await newPage.waitForTimeout(await this.randomDelay(4000));
-      // click on the spam button to see the same comments
-      const showSpamButton = await newPage.evaluate(() => {
-        const buttons = Array.from(
-          document.querySelectorAll('button[role="button"]'),
-        );
 
-        // Log all buttons to the console
-        console.log(
-          'Buttons on the page:',
-          buttons.map(btn => btn.innerText),
-        );
-
-        return buttons.find(button =>
-          button.innerText.includes('Show probable spam'),
-        );
-      });
-
-      console.log(showSpamButton);
-
-      if (showSpamButton) {
-        await newPage.evaluate(button => button.click(), showSpamButton);
-        await newPage.waitForTimeout(await this.randomDelay(3000));
-      }
+      // height of the page
       const currentScrollHeight = await newPage.evaluate(
         () => document.body.scrollHeight,
       );
@@ -567,7 +546,7 @@ class Twitter extends Adapter {
     return false;
   };
 
-  getTheCommentDetails = async (url, commentText) => {
+  getTheCommentDetails = async (url, commentText, currentBrowser) => {
     const commentPage = await currentBrowser.newPage();
     await commentPage.goto(url);
     await commentPage.waitForTimeout(await this.randomDelay(8000));
@@ -817,7 +796,6 @@ class Twitter extends Adapter {
           tweets_id: tweetId,
           tweets_content: tweets_content,
           time_post: time,
-          time_read: Date.now(),
           keyword: this.searchTerm,
           hash: hash,
           commentDetails: getCommentDetailsObject,
@@ -1055,6 +1033,9 @@ class Twitter extends Adapter {
       });
       await verify_page.waitForTimeout(await this.randomDelay(4000));
 
+      console.log(items.length);
+      console.log(items);
+
       const $ = cheerio.load(items[0]);
       const articles = $('article[data-testid="tweet"]').toArray();
       const el = articles[0];
@@ -1200,10 +1181,12 @@ class Twitter extends Adapter {
         tweets_id: tweetId,
         tweets_content: tweets_content,
         time_post: time,
-        time_read: Date.now(),
         hash: hash,
         commentDetails: foundItem,
       };
+
+      console.log(data);
+
       return data;
     } catch (e) {
       console.log('Last round fetching list stop', e);
@@ -1228,7 +1211,7 @@ class Twitter extends Adapter {
       let auditBrowser = await stats.puppeteer.launch({
         executablePath: stats.executablePath,
         userDataDir: userAuditDir,
-        headless: false,
+        // headless: false,
         userAgent:
           'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
         args: [
@@ -1279,7 +1262,7 @@ class Twitter extends Adapter {
         inputItem.commentDetails.getComments,
       );
 
-      console.log(result);
+      console.log('result ::', result);
 
       if (result) {
         if (result.tweets_content != inputItem.tweets_content) {
@@ -1287,15 +1270,6 @@ class Twitter extends Adapter {
             'Content not match',
             result.tweets_content,
             inputItem.tweets_content,
-          );
-          auditBrowser.close();
-          return false;
-        }
-        if (result.time_read - inputItem.time_read > 3600000 * 26) {
-          console.log(
-            'Time read difference too big',
-            result.time_read,
-            inputItem.time_read,
           );
           auditBrowser.close();
           return false;
@@ -1324,13 +1298,17 @@ class Twitter extends Adapter {
           auditBrowser.close();
           return false;
         }
+
+        // check the content of the comment
+        const resultGetComments = await this.cleanText(
+          result.commentDetails.getComments,
+        );
+        const inputItemGetComments = await this.cleanText(
+          inputItem.commentDetails.getComments,
+        );
         if (
-          [...new Set(result.commentDetails.getComments.toLowerCase())].join(
-            '',
-          ) !==
-          [...new Set(inputItem.commentDetails.getComments.toLowerCase())].join(
-            '',
-          )
+          resultGetComments.trim().toLowerCase() !==
+          inputItemGetComments.trim().toLowerCase()
         ) {
           console.log(
             'Comments are not the same',
@@ -1340,6 +1318,8 @@ class Twitter extends Adapter {
           auditBrowser.close();
           return false;
         }
+
+        // check the username
         if (
           result.commentDetails.username != inputItem.commentDetails.username
         ) {

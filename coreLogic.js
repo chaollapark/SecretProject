@@ -332,7 +332,7 @@ class CoreLogic {
           (roundBeginSlot + taskState.submission_window - currentSlot) * 408,
         ),
       );
-      if (submission) {
+      if (submission && submission !== null) {
         await namespaceWrapper.checkSubmissionAndUpdateRound(
           submission,
           roundNumber,

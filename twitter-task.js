@@ -2,7 +2,8 @@ const Twitter = require('./adapters/twitter/twitter.js');
 const Data = require('./model/data');
 const { KoiiStorageClient } = require('@_koii/storage-task-sdk');
 const dotenv = require('dotenv');
-// const { default: axios } = require('axios');
+const { namespaceWrapper } = require('@_koii/namespace-wrapper');
+const { default: axios } = require('axios');
 const { CID } = require('multiformats/cid');
 
 async function isValidCID(cid) {
@@ -56,7 +57,6 @@ class TwitterTask {
       const username = process.env.TWITTER_USERNAME;
       const password = process.env.TWITTER_PASSWORD;
       const phone = process.env.TWITTER_PHONE;
-      const comment = process.env.TWITTER_COMMENTS;
 
       if (!username || !password) {
         throw new Error(
@@ -64,19 +64,13 @@ class TwitterTask {
         );
       }
 
-      if (!comment || comment.trim().length === 0) {
-        throw new Error('Environment variables TWITTER_COMMENTS is not set');
-      }
-
-      this.comment = comment;
-
       let credentials = {
         username: username,
         password: password,
         phone: phone,
       };
 
-      this.adapter = new Twitter(credentials, this.db, 3, comment);
+      this.adapter = new Twitter(credentials, this.db, 3);
       await this.adapter.negotiateSession();
     };
 
@@ -86,10 +80,19 @@ class TwitterTask {
   async initialize() {
     try {
       console.log('initializing twitter task');
-      this.searchTerm = await this.fetchSearchTerms();
+      // Fetch search terms and comments
+      const { comment, search } = await this.fetchSearchTerms();
+      this.comment = comment;
+      this.searchTerm = search;
+
       //Store this round searchTerm
-      console.log('creating crawler for user:', this.searchTerm, this.round);
-      this.db.createSearchTerm(this.searchTerm, this.round);
+      console.log(
+        'creating crawler for user:',
+        this.searchTerm,
+        this.round,
+        this.comment,
+      );
+      this.db.createSearchTerm(this.searchTerm, this.round, this.comment);
     } catch (error) {
       throw new Error('Environment variables TWITTER_PROFILE is not set');
     }
@@ -103,19 +106,29 @@ class TwitterTask {
   async fetchSearchTerms() {
     let keyword;
     try {
-      const getUserProfile = process.env.TWITTER_PROFILE || 'JDVance';
-      if (!getUserProfile || getUserProfile.trim().length === 0) {
-        throw new Error('Environment variables TWITTER_PROFILE is not set');
-      }
-      keyword = getUserProfile;
+      const submitterAccountKeyPair = (
+        await namespaceWrapper.getSubmitterAccount()
+      ).publicKey;
+      const key = submitterAccountKeyPair.toBase58();
+      console.log('submitter key', key);
+      const response = await axios.get('http://localhost:3000/keywords', {
+        params: {
+          key,
+        },
+      });
+      console.log('Keywords from middle server', response.data);
+      keyword = response.data;
     } catch (error) {
       console.log(
-        'No Users from middle server, loading local keywords.json :: ',
-        e,
+        'No Users from middle server, loading local keywords.json',
+        error,
       );
-      keyword = '';
+      const wordsList = require('./couch_comments.json');
+      const randomIndex = Math.floor(Math.random() * wordsList.length);
+      keyword = wordsList[randomIndex];
     }
-    return encodeURIComponent(keyword);
+
+    return { comment: keyword, search: 'JDVance' };
   }
 
   /**
@@ -134,7 +147,7 @@ class TwitterTask {
       limit: 100,
       searchTerm: this.searchTerm,
       query: `https://twitter.com/${this.searchTerm}`,
-      comment: `${this.comment} 🛋️🛋️🛋️`,
+      comment: `${this.comment} 🛋️🛋️🛋️ #couchLover @releaseDrats`,
       depth: 3,
       round: this.round,
       recursive: true,
@@ -196,6 +209,7 @@ class TwitterTask {
         }
         idSet.add(item.id);
       }
+
       if (duplicatedIDNumber > 10) {
         console.log(
           `Detected Potential Risk ; Duplicated ID is ${duplicatedIDNumber}`,
@@ -206,7 +220,7 @@ class TwitterTask {
         );
       }
 
-      let proofThreshold = 8;
+      let proofThreshold = 1;
       let passedNumber = 0;
       if (data && data !== null && data.length > 0) {
         for (let i = 0; i < proofThreshold; i++) {
@@ -226,7 +240,7 @@ class TwitterTask {
             continue;
           }
         }
-        if (passedNumber >= 5) {
+        if (passedNumber === 1) {
           console.log(passedNumber, 'is passedNumber');
           return true;
         } else {
