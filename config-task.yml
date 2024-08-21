@@ -12,14 +12,10 @@ task_executable_network: 'IPFS'
 task_audit_program: 'dist/main.js'
 
 # Total round time of your task : it must be given in slots and each slot is roughly equal to 408ms
-# testing
-round_time: 3500
-audit_window: 1500
-submission_window: 1500
 # for testnet
-# round_time: 33500
-# audit_window: 5000
-# submission_window: 5000
+round_time: 33500
+audit_window: 11500
+submission_window: 11500
 
 # Amounts in KOII
 minimum_stake_amount: 1.9
@@ -57,12 +53,7 @@ requirementsTags:
     value: '5 GB'
 
 # OPTIONAL Only provide the taskId if you are updating the task otherwise leave blank
-task_id: ''
+task_id: '7ZFEAa5DbJQmpfFqJnPvPEBjUeXEuiq6aS3tnrY7pE92'
 
 # Provide the description for changes made in new version of task
 migrationDescription: ''
-# # OPTIONAL Only provide the taskId if you are updating the task otherwise leave blank
-# task_id: '4bSQ4dobLBRougHzFGCqt8vGocuvJWfCwgQD6CwEWEyh'
-
-# # Provide the description for changes made in new version of task
-# migrationDescription: 'update the description'

@@ -740,14 +740,16 @@ class Twitter extends Adapter {
       await commentPage.waitForTimeout(await this.randomDelay(3000));
       const writeSelector =
         'div[data-testid="tweetTextarea_0RichTextInputContainer"]';
+      await commentPage.waitForTimeout(await this.randomDelay(3000));
       await commentPage.evaluate(writeSelector => {
         const element = document.querySelector(writeSelector);
         if (element) {
           element.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
       }, writeSelector);
+      // await commentPage.waitForTimeout(await this.randomDelay(3000));
+      // await commentPage.waitForSelector(writeSelector, { visible: true });
       await commentPage.waitForTimeout(await this.randomDelay(3000));
-      await commentPage.waitForSelector(writeSelector);
       await commentPage.click(writeSelector);
       await commentPage.waitForTimeout(await this.randomDelay(6000));
       await this.humanType(commentPage, writeSelector, comment);
