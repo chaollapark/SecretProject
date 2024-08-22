@@ -496,7 +496,6 @@ class Twitter extends Adapter {
               if (textContent) {
                 try {
                   const waitCleanText = await cleanText(textContent);
-                  console.log(waitCleanText);
                   const getComments = waitCleanText;
                   comments.push(getComments);
                 } catch (error) {
@@ -640,8 +639,6 @@ class Twitter extends Adapter {
         item.getComments.toLowerCase().includes(trimCommentText.toLowerCase()),
       );
 
-      console.log(foundItem);
-
       if (foundItem) {
         // Convert foundItem to a boolean to check if it exists
         const found = !!foundItem;
@@ -743,14 +740,16 @@ class Twitter extends Adapter {
       await commentPage.waitForTimeout(await this.randomDelay(3000));
       const writeSelector =
         'div[data-testid="tweetTextarea_0RichTextInputContainer"]';
+      await commentPage.waitForTimeout(await this.randomDelay(3000));
       await commentPage.evaluate(writeSelector => {
         const element = document.querySelector(writeSelector);
         if (element) {
           element.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
       }, writeSelector);
+      // await commentPage.waitForTimeout(await this.randomDelay(3000));
+      // await commentPage.waitForSelector(writeSelector, { visible: true });
       await commentPage.waitForTimeout(await this.randomDelay(3000));
-      await commentPage.waitForSelector(writeSelector);
       await commentPage.click(writeSelector);
       await commentPage.waitForTimeout(await this.randomDelay(6000));
       await this.humanType(commentPage, writeSelector, comment);
@@ -1033,9 +1032,6 @@ class Twitter extends Adapter {
       });
       await verify_page.waitForTimeout(await this.randomDelay(4000));
 
-      console.log(items.length);
-      console.log(items);
-
       const $ = cheerio.load(items[0]);
       const articles = $('article[data-testid="tweet"]').toArray();
       const el = articles[0];
@@ -1111,14 +1107,9 @@ class Twitter extends Adapter {
               const timeElements = Array.from(
                 tweetElement.querySelectorAll('time[datetime]'),
               );
-              console.log('timeElements :::: ', timeElements);
-
               if (timeElements.length > 0) {
                 timeElements.forEach(async timeElement => {
                   const anchorElement = timeElement.closest('a');
-
-                  console.log('anchorElement ::', anchorElement);
-
                   if (anchorElement) {
                     const urlMatch = anchorElement.href.match(
                       /^https?:\/\/[^\/]+\/([^\/]+)\/status\/(\d+)$/,
@@ -1184,8 +1175,6 @@ class Twitter extends Adapter {
         hash: hash,
         commentDetails: foundItem,
       };
-
-      console.log(data);
 
       return data;
     } catch (e) {
@@ -1261,9 +1250,6 @@ class Twitter extends Adapter {
         verify_page,
         inputItem.commentDetails.getComments,
       );
-
-      console.log('result ::', result);
-
       if (result) {
         if (result.tweets_content != inputItem.tweets_content) {
           console.log(
