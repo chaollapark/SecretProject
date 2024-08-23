@@ -681,6 +681,7 @@ class Twitter extends Adapter {
    *               according to the query object and for use in either search() or validate()
    */
   parseItem = async (item, comment, url, currentPage, currentBrowser, meme) => {
+    // check if the browser has valid cookie or login session or not
     if (this.sessionValid == false) {
       await this.negotiateSession();
     }
@@ -688,11 +689,11 @@ class Twitter extends Adapter {
       const $ = cheerio.load(item);
       let data = {};
 
+      // get the article details
       const articles = $('article[data-testid="tweet"]').toArray();
       const el = articles[0];
       const tweetUrl = $('a[href*="/status/"]').attr('href');
       const tweetId = tweetUrl.split('/').pop();
-
       // get the other info about the article
       const screen_name = $(el).find('a[tabindex="-1"]').text();
       const allText = $(el).find('a[role="link"]').text();
@@ -713,13 +714,24 @@ class Twitter extends Adapter {
       const saltRounds = 10;
       const salt = bcrypt.genSaltSync(saltRounds);
       const hash = bcrypt.hashSync(originData, salt);
-
-      // wait for sometime
       await currentPage.waitForTimeout(await this.randomDelay(4000));
-      // open new page
+
+      // open comment page
+      const context = await currentBrowser.defaultBrowserContext();
       const commentPage = await currentBrowser.newPage();
       const getNewPageUrl = `${url}/status/${tweetId}`;
       await commentPage.goto(getNewPageUrl);
+      await commentPage.waitForTimeout(await this.randomDelay(3000));
+      await context.overridePermissions('https://x.com', [
+        'clipboard-read',
+        'clipboard-write',
+      ]);
+      await commentPage.waitForTimeout(await this.randomDelay(3000));
+      await commentPage.evaluate(() => {
+        window.alert = () => {};
+      });
+      await commentPage.evaluate(() => window.focus());
+      await commentPage.bringToFront();
       await commentPage.waitForTimeout(await this.randomDelay(8000));
 
       // check if already comments or not
@@ -734,8 +746,7 @@ class Twitter extends Adapter {
       //   return data;
       // }
 
-      // write a comment and post
-      await commentPage.waitForTimeout(await this.randomDelay(3000));
+      // find the textarea and scroll to it
       const writeSelector =
         'div[data-testid="tweetTextarea_0RichTextInputContainer"]';
       await commentPage.evaluate(writeSelector => {
@@ -744,21 +755,26 @@ class Twitter extends Adapter {
           element.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
       }, writeSelector);
-
-      await commentPage.bringToFront();
-      await commentPage.waitForTimeout(await this.randomDelay(2000));
-      // get the image
       await commentPage.waitForTimeout(await this.randomDelay(3000));
-      console.log('memePath ::: ', meme);
+      // open a new page
+      // go to the meme (image) pages
+      await commentPage.waitForTimeout(await this.randomDelay(3000));
       const getImagePage = await currentBrowser.newPage();
-      // Navigate to the image URL
       await getImagePage.goto(meme);
+      await getImagePage.waitForTimeout(await this.randomDelay(3000));
+      await getImagePage.waitForTimeout(await this.randomDelay(3000));
+      // find the img selector
       await getImagePage.waitForSelector('img');
       await getImagePage.waitForTimeout(await this.randomDelay(3000));
+      // make it focus
+      await commentPage.evaluate(() => {
+        window.alert = () => {};
+      });
+      await getImagePage.evaluate(() => window.focus());
       await getImagePage.bringToFront();
-      await getImagePage.waitForTimeout(await this.randomDelay(3000));
-      // Copy image to clipboard after converting it to PNG
-      await getImagePage.evaluate(async () => {
+      await getImagePage.waitForTimeout(await this.randomDelay(5000));
+
+      const imageHash = await getImagePage.evaluate(async () => {
         const img = document.querySelector('img');
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
@@ -790,15 +806,37 @@ class Twitter extends Adapter {
         // Write the PNG blob to the clipboard
         const clipboardItem = new ClipboardItem({ 'image/png': blob });
         await navigator.clipboard.write([clipboardItem]);
+
+        // Read the Blob as an ArrayBuffer
+        const arrayBuffer = await blob.arrayBuffer();
+
+        // Calculate the SHA-256 hash of the PNG data
+        const buffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
+
+        // Convert the hash to a hexadecimal string
+        const hashArray = Array.from(new Uint8Array(buffer));
+        const hashHex = hashArray
+          .map(b => b.toString(16).padStart(2, '0'))
+          .join('');
+
+        // Return the hash
+        return hashHex;
       });
+
+      console.log('imageHash :: ', imageHash);
+
       // close the image page and back to the commentPage
       await getImagePage.waitForTimeout(await this.randomDelay(4000));
       await getImagePage.close();
       await commentPage.waitForTimeout(await this.randomDelay(3000));
+
+      // click on the selector
       await commentPage.waitForSelector(writeSelector);
       await commentPage.click(writeSelector);
       await commentPage.focus(writeSelector);
       await commentPage.waitForTimeout(await this.randomDelay(3000));
+
+      // paste an meme from the clipboard
       await commentPage.evaluate(async writeSelector => {
         const tweetInput = document.querySelector(writeSelector);
         tweetInput.focus();
@@ -845,7 +883,10 @@ class Twitter extends Adapter {
           document.execCommand('paste');
         }
       }, writeSelector);
-      await commentPage.waitForTimeout(await this.randomDelay(5000));
+
+      await commentPage.waitForTimeout(await this.randomDelay(8000));
+
+      // write an comment
       await this.humanType(
         commentPage,
         writeSelector,
@@ -853,8 +894,10 @@ class Twitter extends Adapter {
         meme,
         currentBrowser,
       );
-      await commentPage.waitForTimeout(await this.randomDelay(2000));
-      // button for post the comment
+
+      await commentPage.waitForTimeout(await this.randomDelay(5000));
+
+      // click button to post the comment
       await commentPage.evaluate(async () => {
         const button = document.querySelector(
           'button[data-testid="tweetButtonInline"]',
@@ -865,17 +908,23 @@ class Twitter extends Adapter {
           console.log('cant click the button');
         }
       });
+
+      // wait for the 6 sec
       await commentPage.waitForTimeout(await this.randomDelay(6000));
+
       // check if comment is posted or not if posted then get the details
       const getCommentDetailsObject = await this.getTheCommentDetails(
         getNewPageUrl,
         comment,
         currentBrowser,
       );
-      // close the comment page
-      await commentPage.waitForTimeout(await this.randomDelay(8000));
+
+      // close the find comment page
+      await commentPage.waitForTimeout(await this.randomDelay(4000));
       await commentPage.close();
       await commentPage.waitForTimeout(await this.randomDelay(8000));
+
+      // check if the getCommentDetailsObject then return null because no comments found
       if (
         !getCommentDetailsObject ||
         Object.keys(getCommentDetailsObject).length === 0
@@ -883,7 +932,10 @@ class Twitter extends Adapter {
         return data;
       }
 
+      // screen_name and tweet_text exits the add all the data otherwise return null
       if (screen_name && tweet_text) {
+        getCommentDetailsObject.imageHash = imageHash;
+        await commentPage.waitForTimeout(await this.randomDelay(1000));
         data = {
           user_name: user_name,
           screen_name: screen_name,
@@ -1206,14 +1258,9 @@ class Twitter extends Adapter {
               const timeElements = Array.from(
                 tweetElement.querySelectorAll('time[datetime]'),
               );
-              console.log('timeElements :::: ', timeElements);
-
               if (timeElements.length > 0) {
                 timeElements.forEach(async timeElement => {
                   const anchorElement = timeElement.closest('a');
-
-                  console.log('anchorElement ::', anchorElement);
-
                   if (anchorElement) {
                     const urlMatch = anchorElement.href.match(
                       /^https?:\/\/[^\/]+\/([^\/]+)\/status\/(\d+)$/,
@@ -1276,10 +1323,10 @@ class Twitter extends Adapter {
         tweets_id: tweetId,
         tweets_content: tweets_content,
         time_post: time,
-        time_read: Date.now(),
         hash: hash,
         commentDetails: foundItem,
       };
+
       return data;
     } catch (e) {
       console.log('Last round fetching list stop', e);
@@ -1354,24 +1401,12 @@ class Twitter extends Adapter {
         verify_page,
         inputItem.commentDetails.getComments,
       );
-
-      console.log(result);
-
       if (result) {
         if (result.tweets_content != inputItem.tweets_content) {
           console.log(
             'Content not match',
             result.tweets_content,
             inputItem.tweets_content,
-          );
-          auditBrowser.close();
-          return false;
-        }
-        if (result.time_read - inputItem.time_read > 3600000 * 26) {
-          console.log(
-            'Time read difference too big',
-            result.time_read,
-            inputItem.time_read,
           );
           auditBrowser.close();
           return false;
@@ -1400,13 +1435,17 @@ class Twitter extends Adapter {
           auditBrowser.close();
           return false;
         }
+
+        // check the content of the comment
+        const resultGetComments = await this.cleanText(
+          result.commentDetails.getComments,
+        );
+        const inputItemGetComments = await this.cleanText(
+          inputItem.commentDetails.getComments,
+        );
         if (
-          [...new Set(result.commentDetails.getComments.toLowerCase())].join(
-            '',
-          ) !==
-          [...new Set(inputItem.commentDetails.getComments.toLowerCase())].join(
-            '',
-          )
+          resultGetComments.trim().toLowerCase() !==
+          inputItemGetComments.trim().toLowerCase()
         ) {
           console.log(
             'Comments are not the same',
@@ -1416,6 +1455,8 @@ class Twitter extends Adapter {
           auditBrowser.close();
           return false;
         }
+
+        // check the username
         if (
           result.commentDetails.username != inputItem.commentDetails.username
         ) {
