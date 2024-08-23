@@ -1,25 +1,3 @@
-// const TwitterTask = require('../twitter-task');
-// const dotenv = require('dotenv');
-// dotenv.config();
-
-// (async () => {
-//   try {
-//     const getRound = () => 30;
-//     const round = getRound();
-//     const twitterTask = new TwitterTask(getRound, round);
-//     const proofCid =
-//       'bafybeibwtyjl2ts4m3f3kwcbcfhf6hn2q52dys37bfu7yt6vzzwjvclq7i';
-//     const isValid = await twitterTask.validate(proofCid, round);
-//     console.log('Validation result:', isValid);
-//   } catch (error) {
-//     console.error('Error during execution:', error);
-//   } finally {
-//     console.log('done');
-//   }
-// })();
-
-// ========================================================================================================================================
-
 const Twitter = require('../adapters/twitter/twitter.js');
 const bcrypt = require('bcryptjs');
 const Data = require('../model/data');
@@ -42,8 +20,8 @@ const twitterInstance = new Twitter(
 (async () => {
   try {
     const webresult = {
-      id: '1822245059627978849',
-      round: 44,
+      id: '1819050907293655444',
+      round: 1,
       data: {
         user_name: 'JD Vance',
         screen_name: '@JDVance',
@@ -54,17 +32,17 @@ const twitterInstance = new Twitter(
         tweets_content:
           'Our border czar Kamala Harris opened up the border by design. Now real people are suffering.',
         time_post: 1722530507,
-        time_read: 1723600284668,
         keyword: 'JDVance',
-        hash: '$2a$10$l3rO0axR4Q3dYicO0NhhreQZ/hT6/QGxOmxTbVrTYWq3DfXVnGcLm',
+        hash: '$2a$10$uFf.4/uxjXTKlpFzIbxPluNgUBPjWD6z4AJ42mhDyiKgzwTR4FNWG',
         commentDetails: {
-          commentId: '1822245059627978844',
-          getComments: 'apple 🛋️🛋️🛋️',
-          username: 'museowunsaram',
-          postTime: 1723292052,
+          commentId: '1825958917475840433',
+          getComments:
+            'JD, the couch is a safer space than your outdated, harmful ideas. 🛋️🛋️🛋️ #couchLover @releaseDrats',
+          username: 'taehong_koii',
+          postTime: 1724177505,
         },
       },
-      _id: '0HarrHW6o6UGl2NO',
+      _id: 'eHGzqnLkinVyrKTC',
     };
 
     const originData = webresult.data.tweets_content + webresult.data.time_post;

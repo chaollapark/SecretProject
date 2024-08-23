@@ -1,6 +1,5 @@
 const { namespaceWrapper } = require('@_koii/namespace-wrapper');
 const TwitterTask = require('./twitter-task');
-// const { LAMPORTS_PER_SOL } = require('@_koi/web3.js');
 
 class CoreLogic {
   constructor() {
@@ -332,7 +331,7 @@ class CoreLogic {
           (roundBeginSlot + taskState.submission_window - currentSlot) * 408,
         ),
       );
-      if (submission) {
+      if (submission && submission !== null) {
         await namespaceWrapper.checkSubmissionAndUpdateRound(
           submission,
           roundNumber,

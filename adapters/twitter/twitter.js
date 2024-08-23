@@ -16,9 +16,8 @@ const bcrypt = require('bcryptjs');
  * @description
  * Provides a searcher interface for the data gatherer nodes to use to interact with twitter
  */
-
 class Twitter extends Adapter {
-  constructor(credentials, db, maxRetry, comment, meme) {
+  constructor(credentials, db, maxRetry) {
     super(credentials, maxRetry);
     this.credentials = credentials;
     this.db = new Data('db', []);
@@ -29,17 +28,14 @@ class Twitter extends Adapter {
     this.cids.initializeData();
     this.commentsDB = new Data('comment', []);
     this.commentsDB.initializeData();
-    this.toSearch = [];
     this.searchTerm = [];
-    this.parsed = {};
     this.lastSessionCheck = null;
     this.sessionValid = false;
     this.browser = null;
-    this.w3sKey = null;
     this.round = null;
     this.maxRetry = maxRetry;
-    this.comment = comment;
-    this.meme = meme;
+    this.comment = '';
+    this.meme = '';
   }
 
   /**
@@ -110,12 +106,10 @@ class Twitter extends Adapter {
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
       );
       await this.page.waitForTimeout(await this.randomDelay(3000));
-      // await this.page.setViewport({ width: 1920, height: 1080 });
       const screenWidth = await this.page.evaluate(() => window.screen.width);
       const screenHeight = await this.page.evaluate(() => window.screen.height);
       await this.page.setViewport({ width: screenWidth, height: screenHeight });
       await this.page.waitForTimeout(await this.randomDelay(3000));
-
       await this.twitterLogin(this.page, this.browser);
       return true;
     } catch (e) {
@@ -187,7 +181,7 @@ class Twitter extends Adapter {
 
         await currentPage.type('input[name="text"]', this.credentials.username);
         await currentPage.keyboard.press('Enter');
-        await new Promise(resolve => setTimeout(resolve, 10000));
+        await new Promise(resolve => setTimeout(resolve, 8000));
 
         const twitter_verify = await currentPage
           .waitForSelector('input[data-testid="ocfEnterTextTextInput"]', {
@@ -227,7 +221,7 @@ class Twitter extends Adapter {
         );
         console.log('Step: Click login button');
         await currentPage.keyboard.press('Enter');
-        await currentPage.waitForTimeout(await this.randomDelay(3000));
+        await currentPage.waitForTimeout(await this.randomDelay(8000));
         if (!(await this.checkLogin(currentBrowser))) {
           console.log('Password is incorrect or email verification needed.');
           await currentPage.waitForTimeout(await this.randomDelay(5000));
@@ -305,7 +299,7 @@ class Twitter extends Adapter {
 
   checkLogin = async currentBrowser => {
     const newPage = await currentBrowser.newPage();
-    await newPage.waitForTimeout(await this.randomDelay(8000));
+    await newPage.waitForTimeout(await this.randomDelay(3000));
     await newPage.goto('https://x.com/home');
     await newPage.waitForTimeout(await this.randomDelay(5000));
     // Replace the selector with a Twitter-specific element that indicates a logged-in state
@@ -387,7 +381,7 @@ class Twitter extends Adapter {
         return null;
       } else {
         let proof_cid;
-        let path = `dataList.json`;
+        let path = `prime_dataList.json`;
         let basePath = '';
         try {
           basePath = await namespaceWrapper.getBasePath();
@@ -427,7 +421,7 @@ class Twitter extends Adapter {
     }
   };
 
-  humanType = async (page, selector, text, meme) => {
+  humanType = async (page, selector, text, meme, currentBrowser) => {
     for (const char of text) {
       await page.type(selector, char);
       const typingSpeed = Math.random() * 200 + 70;
@@ -439,18 +433,6 @@ class Twitter extends Adapter {
         await page.waitForTimeout(thinkingPause);
       }
     }
-
-    console.log('memePath ::: ', meme);
-    await page.waitForSelector('button[aria-label="Add photos or video"]');
-    const [fileChooser] = await Promise.all([
-      page.waitForFileChooser(),
-      page.click('button[aria-label="Add photos or video"]'),
-    ]);
-    await page.waitForTimeout(await this.randomDelay(4000));
-    await fileChooser.accept([meme]);
-    await page.waitForTimeout(await this.randomDelay(6000));
-    await page.waitForSelector('img[src^="blob:"]');
-    await page.waitForTimeout(await this.randomDelay(3000));
     console.log(`Finished typing. Waiting for additional delay`);
   };
 
@@ -509,7 +491,6 @@ class Twitter extends Adapter {
               if (textContent) {
                 try {
                   const waitCleanText = await cleanText(textContent);
-                  console.log(waitCleanText);
                   const getComments = waitCleanText;
                   comments.push(getComments);
                 } catch (error) {
@@ -545,29 +526,8 @@ class Twitter extends Adapter {
         window.scrollTo(0, document.body.scrollHeight),
       );
       await newPage.waitForTimeout(await this.randomDelay(4000));
-      // click on the spam button to see the same comments
-      const showSpamButton = await newPage.evaluate(() => {
-        const buttons = Array.from(
-          document.querySelectorAll('button[role="button"]'),
-        );
 
-        // Log all buttons to the console
-        console.log(
-          'Buttons on the page:',
-          buttons.map(btn => btn.innerText),
-        );
-
-        return buttons.find(button =>
-          button.innerText.includes('Show probable spam'),
-        );
-      });
-
-      console.log(showSpamButton);
-
-      if (showSpamButton) {
-        await newPage.evaluate(button => button.click(), showSpamButton);
-        await newPage.waitForTimeout(await this.randomDelay(3000));
-      }
+      // height of the page
       const currentScrollHeight = await newPage.evaluate(
         () => document.body.scrollHeight,
       );
@@ -784,12 +744,116 @@ class Twitter extends Adapter {
           element.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
       }, writeSelector);
+
+      await commentPage.bringToFront();
+      await commentPage.waitForTimeout(await this.randomDelay(2000));
+      // get the image
+      await commentPage.waitForTimeout(await this.randomDelay(3000));
+      console.log('memePath ::: ', meme);
+      const getImagePage = await currentBrowser.newPage();
+      // Navigate to the image URL
+      await getImagePage.goto(meme);
+      await getImagePage.waitForSelector('img');
+      await getImagePage.waitForTimeout(await this.randomDelay(3000));
+      await getImagePage.bringToFront();
+      await getImagePage.waitForTimeout(await this.randomDelay(3000));
+      // Copy image to clipboard after converting it to PNG
+      await getImagePage.evaluate(async () => {
+        const img = document.querySelector('img');
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Set desired canvas dimensions (1600x900 or smaller)
+        const targetWidth = 1600;
+        const targetHeight = 900;
+
+        // Calculate aspect ratio to fit within target dimensions
+        const aspectRatio = Math.min(
+          targetWidth / img.width,
+          targetHeight / img.height,
+        );
+        const canvasWidth = img.width * aspectRatio;
+        const canvasHeight = img.height * aspectRatio;
+
+        // Set canvas dimensions to the scaled image dimensions
+        canvas.width = canvasWidth;
+        canvas.height = canvasHeight;
+
+        // Draw the scaled image onto the canvas
+        ctx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
+
+        // Convert the canvas to a Blob in PNG format
+        const blob = await new Promise(resolve =>
+          canvas.toBlob(resolve, 'image/png'),
+        );
+
+        // Write the PNG blob to the clipboard
+        const clipboardItem = new ClipboardItem({ 'image/png': blob });
+        await navigator.clipboard.write([clipboardItem]);
+      });
+      // close the image page and back to the commentPage
+      await getImagePage.waitForTimeout(await this.randomDelay(4000));
+      await getImagePage.close();
       await commentPage.waitForTimeout(await this.randomDelay(3000));
       await commentPage.waitForSelector(writeSelector);
       await commentPage.click(writeSelector);
-      await commentPage.waitForTimeout(await this.randomDelay(6000));
-      await this.humanType(commentPage, writeSelector, comment, meme);
-      await commentPage.waitForTimeout(await this.randomDelay(8000));
+      await commentPage.focus(writeSelector);
+      await commentPage.waitForTimeout(await this.randomDelay(3000));
+      await commentPage.evaluate(async writeSelector => {
+        const tweetInput = document.querySelector(writeSelector);
+        tweetInput.focus();
+
+        if (navigator.clipboard && navigator.clipboard.read) {
+          const clipboardItems = await navigator.clipboard.read();
+          const clipboardItem = clipboardItems.find(item =>
+            item.types.includes('image/png'),
+          );
+
+          if (clipboardItem) {
+            const blob = await clipboardItem.getType('image/png');
+
+            const dataTransfer = new DataTransfer();
+            const file = new File([blob], 'pasted-image.png', {
+              type: 'image/png',
+            });
+            dataTransfer.items.add(file);
+
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.files = dataTransfer.files;
+
+            // Simulate a file drop event
+            const event = new DragEvent('drop', {
+              dataTransfer: dataTransfer,
+              bubbles: true,
+              cancelable: true,
+            });
+
+            tweetInput.dispatchEvent(event);
+
+            // Ensure the image upload is successful and submit the form
+            setTimeout(() => {
+              const submitButton = document.querySelector(
+                'button[type="submit"]',
+              ); // Adjust selector for the submit button
+              if (submitButton) {
+                submitButton.click();
+              }
+            }, 1000); // Adjust timeout as needed to wait for image upload
+          }
+        } else {
+          document.execCommand('paste');
+        }
+      }, writeSelector);
+      await commentPage.waitForTimeout(await this.randomDelay(5000));
+      await this.humanType(
+        commentPage,
+        writeSelector,
+        comment,
+        meme,
+        currentBrowser,
+      );
+      await commentPage.waitForTimeout(await this.randomDelay(2000));
       // button for post the comment
       await commentPage.evaluate(async () => {
         const button = document.querySelector(
@@ -802,19 +866,16 @@ class Twitter extends Adapter {
         }
       });
       await commentPage.waitForTimeout(await this.randomDelay(6000));
-
       // check if comment is posted or not if posted then get the details
       const getCommentDetailsObject = await this.getTheCommentDetails(
         getNewPageUrl,
         comment,
         currentBrowser,
       );
-
       // close the comment page
       await commentPage.waitForTimeout(await this.randomDelay(8000));
       await commentPage.close();
       await commentPage.waitForTimeout(await this.randomDelay(8000));
-
       if (
         !getCommentDetailsObject ||
         Object.keys(getCommentDetailsObject).length === 0

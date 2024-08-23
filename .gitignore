@@ -17,7 +17,7 @@ twitter-db
 localKOIIDB.db
 migrate.sh
 data.json
-dataList.json
+prime_dataList.json
 bodyHTML.html 
 passwordHTML.html
 usernameHTML.html

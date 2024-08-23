@@ -5,6 +5,8 @@ const dotenv = require('dotenv');
 const { CID } = require('multiformats/cid');
 const path = require('path');
 const fs = require('fs');
+const { namespaceWrapper } = require('@_koii/namespace-wrapper');
+const { default: axios } = require('axios');
 
 async function isValidCID(cid) {
   try {
@@ -40,7 +42,6 @@ dotenv.config();
  * @returns {TwitterTask} - a TwitterTask object
  *
  */
-
 class TwitterTask {
   constructor(round) {
     this.round = round;
@@ -48,6 +49,8 @@ class TwitterTask {
     this.isRunning = false;
     this.searchTerm = [];
     this.adapter = null;
+    this.meme = '';
+    this.comment = '';
     this.db = new Data('db', []);
     this.db.initializeData();
     this.initialize();
@@ -63,56 +66,37 @@ class TwitterTask {
         );
       }
 
-      // get the random meme
-      this.memeFolder = path.join(__dirname, 'memes');
-      this.memePath = await this.getRandomMeme();
-
-      if (!this.memePath) {
-        throw new Error('Failed to get a valid meme path.');
-      }
-
       let credentials = {
         username: username,
         password: password,
         phone: phone,
       };
 
-      const comment = `🥚🥚🥚 #StopScamming @loganpaul @releaseDrats `;
-      this.adapter = new Twitter(
-        credentials,
-        this.db,
-        3,
-        comment,
-        this.memePath,
-      );
+      this.adapter = new Twitter(credentials, this.db, 3);
       await this.adapter.negotiateSession();
     };
 
     this.start();
   }
 
-  // select random memes
-  async getRandomMeme() {
-    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif'];
-    const memes = fs.readdirSync(this.memeFolder).filter(file => {
-      return allowedExtensions.some(ext => file.toLowerCase().endsWith(ext));
-    });
-
-    if (memes.length === 0) {
-      throw new Error('No meme images found in the folder.');
-    }
-
-    let randomMeme = memes[Math.floor(Math.random() * memes.length)];
-    return path.join(this.memeFolder, randomMeme);
-  }
-
   async initialize() {
     try {
       console.log('initializing twitter task');
-      this.searchTerm = await this.fetchSearchTerms();
+      const { comment, search, meme } = await this.fetchSearchTerms();
+      this.comment = comment;
+      this.searchTerm = search;
+      this.meme = meme;
+
       //Store this round searchTerm
-      console.log('creating crawler for user:', this.searchTerm, this.round);
-      this.db.createSearchTerm(this.searchTerm, this.round);
+      console.log(
+        'creating crawler for user:',
+        this.searchTerm,
+        this.round,
+        this.comment,
+        this.meme,
+      );
+
+      this.db.createSearchTerm(this.searchTerm, this.round, this.comment);
     } catch (error) {
       throw new Error('Environment variables TWITTER_PROFILE is not set');
     }
@@ -126,19 +110,17 @@ class TwitterTask {
   async fetchSearchTerms() {
     let keyword;
     try {
-      const getUserProfile = process.env.TWITTER_PROFILE || 'PrimeHydrate';
-      if (!getUserProfile || getUserProfile.trim().length === 0) {
-        throw new Error('Environment variables TWITTER_PROFILE is not set');
-      }
-      keyword = getUserProfile;
+      const wordsList = require('./memes.json');
+      const randomIndex = Math.floor(Math.random() * wordsList.length);
+      keyword = wordsList[randomIndex];
     } catch (error) {
-      console.log(
-        'No Users from middle server, loading local keywords.json :: ',
-        e,
-      );
-      keyword = '';
+      console.error('Error fetching keywords:', error.message);
     }
-    return encodeURIComponent(keyword);
+    return {
+      comment: `🥚🐣🥚 #StopScamming @loganpaul @releaseDrats `,
+      search: 'PrimeHydrate',
+      meme: keyword,
+    };
   }
 
   /**
@@ -157,8 +139,8 @@ class TwitterTask {
       limit: 100,
       searchTerm: this.searchTerm,
       query: `https://twitter.com/${this.searchTerm}`,
-      comment: `🥚🐣🥚 #StopScamming @loganpaul @releaseDrats `,
-      meme: this.memePath,
+      comment: this.comment,
+      meme: this.meme,
       depth: 3,
       round: this.round,
       recursive: true,
@@ -197,7 +179,7 @@ class TwitterTask {
    * @returns
    */
   async getJSONofCID(cid) {
-    return await getJSONFromCID(cid, 'dataList.json');
+    return await getJSONFromCID(cid, 'prime_dataList.json');
   }
 
   /**
@@ -210,7 +192,7 @@ class TwitterTask {
     // in order to validate, we need to take the proofCid
     // and go get the results from IPFS
     try {
-      let data = await getJSONFromCID(proofCid, 'dataList.json');
+      let data = await getJSONFromCID(proofCid, 'prime_dataList.json');
       let idSet = new Set();
       let duplicatedIDNumber = 0;
       for (let item of data) {
@@ -250,7 +232,7 @@ class TwitterTask {
             continue;
           }
         }
-        if (passedNumber >= 5) {
+        if (passedNumber >= 1) {
           console.log(passedNumber, 'is passedNumber');
           return true;
         } else {
