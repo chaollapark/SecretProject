@@ -86,7 +86,7 @@ class Twitter extends Adapter {
       this.browser = await stats.puppeteer.launch({
         executablePath: stats.executablePath,
         userDataDir: userDataDir,
-        headless: false,
+        // headless: false,
         userAgent:
           'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
         args: [
@@ -98,6 +98,8 @@ class Twitter extends Adapter {
           '--no-sandbox',
           '--disable-setuid-sandbox',
           '--disable-gpu',
+          '--disable-dev-shm-usage',
+          ''
         ],
       });
       console.log('Step: Open new page');
@@ -717,15 +719,9 @@ class Twitter extends Adapter {
       await currentPage.waitForTimeout(await this.randomDelay(4000));
 
       // open comment page
-      const context = await currentBrowser.defaultBrowserContext();
       const commentPage = await currentBrowser.newPage();
       const getNewPageUrl = `${url}/status/${tweetId}`;
       await commentPage.goto(getNewPageUrl);
-      await commentPage.waitForTimeout(await this.randomDelay(3000));
-      await context.overridePermissions('https://x.com', [
-        'clipboard-read',
-        'clipboard-write',
-      ]);
       await commentPage.waitForTimeout(await this.randomDelay(3000));
       await commentPage.evaluate(() => {
         window.alert = () => {};
@@ -762,6 +758,12 @@ class Twitter extends Adapter {
       const getImagePage = await currentBrowser.newPage();
       await getImagePage.goto(meme);
       await getImagePage.waitForTimeout(await this.randomDelay(3000));
+      const client = await getImagePage.target().createCDPSession()
+      const newUrlMeme = new URL(meme)
+      await client.send("Browser.grantPermissions", {
+        origin: newUrlMeme.origin,
+        permissions:["clipboardReadWrite", "clipboardSanitizedWrite"]
+      })
       await getImagePage.waitForTimeout(await this.randomDelay(3000));
       // find the img selector
       await getImagePage.waitForSelector('img');
@@ -773,6 +775,15 @@ class Twitter extends Adapter {
       await getImagePage.evaluate(() => window.focus());
       await getImagePage.bringToFront();
       await getImagePage.waitForTimeout(await this.randomDelay(5000));
+
+      // const state = await getImagePage.evaluate(async () => {
+      //   return (await navigator.permissions.query({name: "clipboard-write"})).state
+      // })
+      // const state2 = await getImagePage.evaluate(async () => {
+      //   return (await navigator.permissions.query({name: "clipboard-read"})).state
+      // })
+      // console.log(state)
+      // console.log(state2)
 
       const imageHash = await getImagePage.evaluate(async () => {
         const img = document.querySelector('img');
@@ -835,8 +846,22 @@ class Twitter extends Adapter {
       await commentPage.click(writeSelector);
       await commentPage.focus(writeSelector);
       await commentPage.waitForTimeout(await this.randomDelay(3000));
+      const client2 = await commentPage.target().createCDPSession()
+      await client2.send("Browser.grantPermissions", {
+        origin: "https://x.com",
+        permissions:["clipboardReadWrite", "clipboardSanitizedWrite"],
+      })
+      await commentPage.waitForTimeout(await this.randomDelay(4000));
 
-      // paste an meme from the clipboard
+      // const state3 = await commentPage.evaluate(async () => {
+      //   return (await navigator.permissions.query({name: "clipboard-write"})).state
+      // })
+      // const state4 = await commentPage.evaluate(async () => {
+      //   return (await navigator.permissions.query({name: "clipboard-read"})).state
+      // })
+      // console.log(state3)
+      // console.log(state4)
+
       await commentPage.evaluate(async writeSelector => {
         const tweetInput = document.querySelector(writeSelector);
         tweetInput.focus();
@@ -1351,7 +1376,7 @@ class Twitter extends Adapter {
       let auditBrowser = await stats.puppeteer.launch({
         executablePath: stats.executablePath,
         userDataDir: userAuditDir,
-        headless: false,
+        // headless: false,
         userAgent:
           'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
         args: [
