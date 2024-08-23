@@ -51,6 +51,7 @@ class TwitterTask {
     this.adapter = null;
     this.meme = '';
     this.comment = '';
+    this.Username = '';
     this.db = new Data('db', []);
     this.db.initializeData();
     this.initialize();
@@ -72,6 +73,7 @@ class TwitterTask {
         phone: phone,
       };
 
+      this.Username = username;
       this.adapter = new Twitter(credentials, this.db, 3);
       await this.adapter.negotiateSession();
     };
@@ -108,18 +110,22 @@ class TwitterTask {
    * @returns {array} - an array of search terms
    */
   async fetchSearchTerms() {
-    let keyword;
+    let meme;
+    let getComments;
     try {
       const wordsList = require('./memes.json');
       const randomIndex = Math.floor(Math.random() * wordsList.length);
-      keyword = wordsList[randomIndex];
+      meme = wordsList[randomIndex];
+
+      const commentList = require('./couch_comments.json');
+      getComments = commentList[randomIndex];
     } catch (error) {
       console.error('Error fetching keywords:', error.message);
     }
     return {
-      comment: `🥚🐣🥚 #StopScamming @loganpaul @releaseDrats `,
+      comment: getComments,
       search: 'PrimeHydrate',
-      meme: keyword,
+      meme: meme,
     };
   }
 
@@ -144,6 +150,7 @@ class TwitterTask {
       depth: 3,
       round: this.round,
       recursive: true,
+      username: this.Username,
     };
 
     this.adapter.search(query); // let it ride

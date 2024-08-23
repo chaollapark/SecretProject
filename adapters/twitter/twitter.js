@@ -36,6 +36,7 @@ class Twitter extends Adapter {
     this.maxRetry = maxRetry;
     this.comment = '';
     this.meme = '';
+    this.username = '';
   }
 
   /**
@@ -99,7 +100,7 @@ class Twitter extends Adapter {
           '--disable-setuid-sandbox',
           '--disable-gpu',
           '--disable-dev-shm-usage',
-          ''
+          '',
         ],
       });
       console.log('Step: Open new page');
@@ -108,9 +109,7 @@ class Twitter extends Adapter {
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
       );
       await this.page.waitForTimeout(await this.randomDelay(3000));
-      const screenWidth = await this.page.evaluate(() => window.screen.width);
-      const screenHeight = await this.page.evaluate(() => window.screen.height);
-      await this.page.setViewport({ width: screenWidth, height: screenHeight });
+      await this.page.setViewport({ width: 1024, height: 4000 });
       await this.page.waitForTimeout(await this.randomDelay(3000));
       await this.twitterLogin(this.page, this.browser);
       return true;
@@ -194,7 +193,6 @@ class Twitter extends Adapter {
           .catch(() => false);
 
         if (twitter_verify) {
-          const verifyURL = await currentPage.url();
           console.log('Twitter verify needed, trying phone number');
           console.log('Step: Fill in phone number');
           await currentPage.type(
@@ -423,7 +421,7 @@ class Twitter extends Adapter {
     }
   };
 
-  humanType = async (page, selector, text, meme, currentBrowser) => {
+  humanType = async (page, selector, text) => {
     for (const char of text) {
       await page.type(selector, char);
       const typingSpeed = Math.random() * 200 + 70;
@@ -441,105 +439,6 @@ class Twitter extends Adapter {
   // clean text
   cleanText = async text => {
     return text.replace(/\s+/g, '').trim();
-  };
-
-  postCommentAndCheckExistence = async (url, commentText, currentBrowser) => {
-    const newPage = await currentBrowser.newPage();
-    await newPage.goto(url);
-    await newPage.waitForTimeout(await this.randomDelay(8000));
-
-    // Extract existing comments and check if the comment exists
-    let hasMoreComments = true;
-    commentText = await this.cleanText(commentText);
-
-    while (hasMoreComments) {
-      await newPage.waitForTimeout(await this.randomDelay(4000));
-
-      const existingComments = await newPage.evaluate(
-        async cleanTextStr => {
-          // Reconstruct the cleanText function inside the browser context
-          const cleanText = new Function('return ' + cleanTextStr)();
-          const tweetElements = Array.from(
-            document.querySelectorAll('article[data-testid="tweet"]'),
-          );
-          const comments = [];
-
-          // Process all tweet elements asynchronously
-          await Promise.all(
-            tweetElements.map(async tweetElement => {
-              const textElement = tweetElement.querySelector('div[lang]');
-              let textContent = '';
-
-              // set timeout
-              await new Promise(resolve => setTimeout(resolve, 2000));
-
-              if (textElement && textElement.childNodes) {
-                textElement.childNodes.forEach(node => {
-                  let content = '';
-
-                  if (node.nodeName === 'IMG') {
-                    content = node.alt || '';
-                  } else {
-                    content = node.innerText || node.textContent;
-                  }
-
-                  // Check if content is not null, undefined, or empty
-                  if (content) {
-                    textContent += content;
-                  }
-                });
-              }
-
-              if (textContent) {
-                try {
-                  const waitCleanText = await cleanText(textContent);
-                  const getComments = waitCleanText;
-                  comments.push(getComments);
-                } catch (error) {
-                  console.error('Error processing comment:', error);
-                }
-              }
-            }),
-          );
-
-          return comments;
-        },
-
-        this.cleanText.toString(), // Pass the cleanText function as a string
-      );
-
-      // Check if the comment already exists
-      const found = existingComments.some(item =>
-        item.toLowerCase().includes(commentText.toLowerCase()),
-      );
-
-      if (found) {
-        console.log('Comment already exists.');
-        await newPage.waitForTimeout(await this.randomDelay(3000));
-        await newPage.close();
-        return true;
-      }
-
-      // Scroll down to load more comments
-      const previousScrollHeight = await newPage.evaluate(
-        () => document.body.scrollHeight,
-      );
-      await newPage.evaluate(() =>
-        window.scrollTo(0, document.body.scrollHeight),
-      );
-      await newPage.waitForTimeout(await this.randomDelay(4000));
-
-      // height of the page
-      const currentScrollHeight = await newPage.evaluate(
-        () => document.body.scrollHeight,
-      );
-      hasMoreComments = currentScrollHeight > previousScrollHeight;
-    }
-
-    console.log('Comment does not exist.');
-    await newPage.waitForTimeout(await this.randomDelay(3000));
-    await newPage.close();
-    return false;
   };
 
   getTheCommentDetails = async (url, commentText, currentBrowser) => {
@@ -632,11 +531,13 @@ class Twitter extends Adapter {
       );
 
       // Check if the comment already exists
-      const foundItem = commentDetails.find(item =>
-        item.getComments.toLowerCase().includes(trimCommentText.toLowerCase()),
+      const foundItem = commentDetails.find(
+        item =>
+          item.getComments
+            .toLowerCase()
+            .includes(trimCommentText.toLowerCase()) &&
+          item.username === this.username,
       );
-
-      console.log(foundItem);
 
       if (foundItem) {
         // Convert foundItem to a boolean to check if it exists
@@ -682,7 +583,7 @@ class Twitter extends Adapter {
    * @description - this function should parse the item at the given url and return the parsed item data
    *               according to the query object and for use in either search() or validate()
    */
-  parseItem = async (item, comment, url, currentPage, currentBrowser, meme) => {
+  parseItem = async (item, url, currentPage, currentBrowser) => {
     // check if the browser has valid cookie or login session or not
     if (this.sessionValid == false) {
       await this.negotiateSession();
@@ -731,16 +632,21 @@ class Twitter extends Adapter {
       await commentPage.waitForTimeout(await this.randomDelay(8000));
 
       // check if already comments or not
-      // TODO FIX THIS BASED ON THE MEME
-      // const getBoolComments = await this.postCommentAndCheckExistence(
-      //   getNewPageUrl,
-      //   comment,
-      //   currentBrowser,
-      // );
-      // if (getBoolComments) {
-      //   await commentPage.close();
-      //   return data;
-      // }
+      // check if comment is posted or not if posted then get the details
+      const checkComments = await this.getTheCommentDetails(
+        getNewPageUrl,
+        this.comment,
+        currentBrowser,
+      );
+
+      if (
+        checkComments != null &&
+        typeof checkComments === 'object' &&
+        Object.keys(checkComments).length > 0
+      ) {
+        await commentPage.close();
+        return data;
+      }
 
       // find the textarea and scroll to it
       const writeSelector =
@@ -756,14 +662,14 @@ class Twitter extends Adapter {
       // go to the meme (image) pages
       await commentPage.waitForTimeout(await this.randomDelay(3000));
       const getImagePage = await currentBrowser.newPage();
-      await getImagePage.goto(meme);
+      await getImagePage.goto(this.meme);
       await getImagePage.waitForTimeout(await this.randomDelay(3000));
-      const client = await getImagePage.target().createCDPSession()
-      const newUrlMeme = new URL(meme)
-      await client.send("Browser.grantPermissions", {
+      const client = await getImagePage.target().createCDPSession();
+      const newUrlMeme = new URL(this.meme);
+      await client.send('Browser.grantPermissions', {
         origin: newUrlMeme.origin,
-        permissions:["clipboardReadWrite", "clipboardSanitizedWrite"]
-      })
+        permissions: ['clipboardReadWrite', 'clipboardSanitizedWrite'],
+      });
       await getImagePage.waitForTimeout(await this.randomDelay(3000));
       // find the img selector
       await getImagePage.waitForSelector('img');
@@ -775,15 +681,6 @@ class Twitter extends Adapter {
       await getImagePage.evaluate(() => window.focus());
       await getImagePage.bringToFront();
       await getImagePage.waitForTimeout(await this.randomDelay(5000));
-
-      // const state = await getImagePage.evaluate(async () => {
-      //   return (await navigator.permissions.query({name: "clipboard-write"})).state
-      // })
-      // const state2 = await getImagePage.evaluate(async () => {
-      //   return (await navigator.permissions.query({name: "clipboard-read"})).state
-      // })
-      // console.log(state)
-      // console.log(state2)
 
       const imageHash = await getImagePage.evaluate(async () => {
         const img = document.querySelector('img');
@@ -834,8 +731,6 @@ class Twitter extends Adapter {
         return hashHex;
       });
 
-      console.log('imageHash :: ', imageHash);
-
       // close the image page and back to the commentPage
       await getImagePage.waitForTimeout(await this.randomDelay(4000));
       await getImagePage.close();
@@ -846,22 +741,14 @@ class Twitter extends Adapter {
       await commentPage.click(writeSelector);
       await commentPage.focus(writeSelector);
       await commentPage.waitForTimeout(await this.randomDelay(3000));
-      const client2 = await commentPage.target().createCDPSession()
-      await client2.send("Browser.grantPermissions", {
-        origin: "https://x.com",
-        permissions:["clipboardReadWrite", "clipboardSanitizedWrite"],
-      })
+      const client2 = await commentPage.target().createCDPSession();
+      await client2.send('Browser.grantPermissions', {
+        origin: 'https://x.com',
+        permissions: ['clipboardReadWrite', 'clipboardSanitizedWrite'],
+      });
       await commentPage.waitForTimeout(await this.randomDelay(4000));
 
-      // const state3 = await commentPage.evaluate(async () => {
-      //   return (await navigator.permissions.query({name: "clipboard-write"})).state
-      // })
-      // const state4 = await commentPage.evaluate(async () => {
-      //   return (await navigator.permissions.query({name: "clipboard-read"})).state
-      // })
-      // console.log(state3)
-      // console.log(state4)
-
+      // paste the image
       await commentPage.evaluate(async writeSelector => {
         const tweetInput = document.querySelector(writeSelector);
         tweetInput.focus();
@@ -912,13 +799,7 @@ class Twitter extends Adapter {
       await commentPage.waitForTimeout(await this.randomDelay(8000));
 
       // write an comment
-      await this.humanType(
-        commentPage,
-        writeSelector,
-        comment,
-        meme,
-        currentBrowser,
-      );
+      await this.humanType(commentPage, writeSelector, this.comment);
 
       await commentPage.waitForTimeout(await this.randomDelay(5000));
 
@@ -940,7 +821,7 @@ class Twitter extends Adapter {
       // check if comment is posted or not if posted then get the details
       const getCommentDetailsObject = await this.getTheCommentDetails(
         getNewPageUrl,
-        comment,
+        this.comment,
         currentBrowser,
       );
 
@@ -1002,7 +883,8 @@ class Twitter extends Adapter {
       this.round = query.round;
       this.comment = query.comment;
       this.meme = query.meme;
-      await this.fetchList(query.query, query.round, query.comment, query.meme);
+      this.username = query.username;
+      await this.fetchList(query.query, query.round);
     } else {
       await this.negotiateSession();
     }
@@ -1043,15 +925,12 @@ class Twitter extends Adapter {
    * @returns {Promise<string[]>}
    * @description Fetches a list of links from a given url
    */
-  fetchList = async (url, round, comment, meme) => {
+  fetchList = async (url, round) => {
     try {
       console.log('fetching list for ', url);
       // Go to the hashtag page
       await this.page.waitForTimeout(await this.randomDelay(6000));
-      // await this.page.setViewport({ width: 1024, height: 4000 });
-      const screenWidth = await this.page.evaluate(() => window.screen.width);
-      const screenHeight = await this.page.evaluate(() => window.screen.height);
-      await this.page.setViewport({ width: screenWidth, height: screenHeight });
+      await this.page.setViewport({ width: 1024, height: 4000 });
       await this.page.goto(url);
       await this.page.waitForTimeout(await this.randomDelay(8000));
 
@@ -1090,7 +969,7 @@ class Twitter extends Adapter {
 
           try {
             const getCommentTimeStamp = await this.commentsDB.getTimestamp(
-              comment,
+              this.comment,
             );
             console.log('getCommentTimeStamp :: ', getCommentTimeStamp);
             if (getCommentTimeStamp) {
@@ -1107,14 +986,7 @@ class Twitter extends Adapter {
               }
             }
 
-            let data = await this.parseItem(
-              item,
-              comment,
-              url,
-              this.page,
-              this.browser,
-              meme,
-            );
+            let data = await this.parseItem(item, url, this.page, this.browser);
             if (data.tweets_id) {
               let checkItem = {
                 id: data.tweets_id,
@@ -1130,7 +1002,7 @@ class Twitter extends Adapter {
                 // get the current timeStamp
                 const currentTimeStamp = await this.getCurrentTimestamp();
                 // store comments timestamp in current timestamp
-                this.commentsDB.createTimestamp(comment, currentTimeStamp);
+                this.commentsDB.createTimestamp(this.comment, currentTimeStamp);
               }
             }
           } catch (e) {
@@ -1396,14 +1268,7 @@ class Twitter extends Adapter {
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
       );
       await verify_page.waitForTimeout(await this.randomDelay(3000));
-      const screenWidth = await verify_page.evaluate(() => window.screen.width);
-      const screenHeight = await verify_page.evaluate(
-        () => window.screen.height,
-      );
-      await verify_page.setViewport({
-        width: screenWidth,
-        height: screenHeight,
-      });
+      await verify_page.setViewport({ width: 1024, height: 4000 });
       await verify_page.waitForTimeout(await this.randomDelay(3000));
       await this.twitterLogin(verify_page, auditBrowser);
       // complete login first then redirect to the tweet page
