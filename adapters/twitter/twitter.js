@@ -886,8 +886,6 @@ class Twitter extends Adapter {
       const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
       const checkEmail = emailRegex.test(query.username);
 
-      console.log('check input :: username', checkEmail);
-
       if (checkEmail) {
         // get the username from the home
         await this.page.waitForTimeout(await this.randomDelay(6000));
@@ -915,13 +913,11 @@ class Twitter extends Adapter {
         await this.page.waitForTimeout(await this.randomDelay(6000));
         if (loggedInUsername && loggedInUsername !== 'No username found') {
           this.username = loggedInUsername;
-          console.log(loggedInUsername);
           await this.fetchList(query.query, query.round);
         }
         console.log('Failed to retrieve a valid username.');
       } else {
         this.username = query.username;
-        console.log(this.username);
         await this.fetchList(query.query, query.round);
       }
     } else {
@@ -966,6 +962,17 @@ class Twitter extends Adapter {
    */
   fetchList = async (url, round) => {
     try {
+      if (
+        this.username === '' ||
+        this.username === null ||
+        this.username === undefined
+      ) {
+        console.log(
+          'fetching list stopped: Please replace TWITTER_USERNAME with your actual Twitter username, not your email.',
+        );
+        return;
+      }
+
       console.log('fetching list for ', url);
       // Go to the hashtag page
       await this.page.waitForTimeout(await this.randomDelay(6000));
@@ -1101,7 +1108,7 @@ class Twitter extends Adapter {
   };
 
   /**
-   * retrieveItem derived from fetchList
+   * retrieveItem derived
    * @param {*} url
    * @param {*} item
    * @returns
