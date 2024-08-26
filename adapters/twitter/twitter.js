@@ -100,7 +100,6 @@ class Twitter extends Adapter {
           '--disable-setuid-sandbox',
           '--disable-gpu',
           '--disable-dev-shm-usage',
-          '',
         ],
       });
       console.log('Step: Open new page');
@@ -109,7 +108,7 @@ class Twitter extends Adapter {
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
       );
       await this.page.waitForTimeout(await this.randomDelay(3000));
-      await this.page.setViewport({ width: 1024, height: 4000 });
+      await this.page.setViewport({ width: 1920, height: 1080 });
       await this.page.waitForTimeout(await this.randomDelay(3000));
       await this.twitterLogin(this.page, this.browser);
       return true;
@@ -657,10 +656,9 @@ class Twitter extends Adapter {
           element.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
       }, writeSelector);
-      await commentPage.waitForTimeout(await this.randomDelay(3000));
       // open a new page
       // go to the meme (image) pages
-      await commentPage.waitForTimeout(await this.randomDelay(3000));
+      await commentPage.waitForTimeout(await this.randomDelay(5000));
       const getImagePage = await currentBrowser.newPage();
       await getImagePage.goto(this.meme);
       await getImagePage.waitForTimeout(await this.randomDelay(3000));
@@ -883,8 +881,49 @@ class Twitter extends Adapter {
       this.round = query.round;
       this.comment = query.comment;
       this.meme = query.meme;
-      this.username = query.username;
-      await this.fetchList(query.query, query.round);
+
+      // check if the input is email or not
+      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+      const checkEmail = emailRegex.test(query.username);
+
+      console.log('check input :: username', checkEmail);
+
+      if (checkEmail) {
+        // get the username from the home
+        await this.page.waitForTimeout(await this.randomDelay(6000));
+        await this.page.goto('https://x.com/home');
+        await this.page.waitForTimeout(await this.randomDelay(6000));
+        const loggedInUsername = await this.page.evaluate(() => {
+          const elements = document.querySelectorAll(
+            '[data-testid^="UserAvatar-Container-"]',
+          );
+          const extractUsername = element => {
+            const dataTestId = element.getAttribute('data-testid');
+            if (dataTestId) {
+              const username = dataTestId.split('-').pop();
+              return username && username.trim() ? username : null;
+            }
+            return null;
+          };
+          let username =
+            elements.length > 0 ? extractUsername(elements[0]) : null;
+          if (!username && elements.length > 1) {
+            username = extractUsername(elements[1]);
+          }
+          return username ? username : 'No username found';
+        });
+        await this.page.waitForTimeout(await this.randomDelay(6000));
+        if (loggedInUsername && loggedInUsername !== 'No username found') {
+          this.username = loggedInUsername;
+          console.log(loggedInUsername);
+          await this.fetchList(query.query, query.round);
+        }
+        console.log('Failed to retrieve a valid username.');
+      } else {
+        this.username = query.username;
+        console.log(this.username);
+        await this.fetchList(query.query, query.round);
+      }
     } else {
       await this.negotiateSession();
     }

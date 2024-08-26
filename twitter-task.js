@@ -51,7 +51,7 @@ class TwitterTask {
     this.adapter = null;
     this.meme = '';
     this.comment = '';
-    this.Username = '';
+    this.username = '';
     this.db = new Data('db', []);
     this.db.initializeData();
     this.initialize();
@@ -73,7 +73,7 @@ class TwitterTask {
         phone: phone,
       };
 
-      this.Username = username;
+      this.username = username;
       this.adapter = new Twitter(credentials, this.db, 3);
       await this.adapter.negotiateSession();
     };
@@ -114,11 +114,14 @@ class TwitterTask {
     let getComments;
     try {
       const wordsList = require('./memes.json');
-      const randomIndex = Math.floor(Math.random() * wordsList.length);
-      meme = wordsList[randomIndex];
+      const randomIndexWordsList = Math.floor(Math.random() * wordsList.length);
+      meme = wordsList[randomIndexWordsList];
 
       const commentList = require('./couch_comments.json');
-      getComments = commentList[randomIndex];
+      const randomIndexCommentList = Math.floor(
+        Math.random() * commentList.length,
+      );
+      getComments = commentList[randomIndexCommentList];
     } catch (error) {
       console.error('Error fetching keywords:', error.message);
     }
@@ -144,13 +147,13 @@ class TwitterTask {
     let query = {
       limit: 100,
       searchTerm: this.searchTerm,
-      query: `https://twitter.com/${this.searchTerm}`,
+      query: `https://x.com/${this.searchTerm}`,
       comment: this.comment,
       meme: this.meme,
       depth: 3,
       round: this.round,
       recursive: true,
-      username: this.Username,
+      username: this.username,
     };
 
     this.adapter.search(query); // let it ride

@@ -13,10 +13,11 @@ const run = async () => {
 
   var searchTerm = args.length > 0 ? args[0] : 'Web3';
 
+  // TODO NEED TO UPDATE THIS BASED ON THE TASK
   let query = {
     limit: 100,
     searchTerm: searchTerm,
-    query: `https://twitter.com/search?q=${searchTerm}&src=typed_query`,
+    query: `https://x.com/search?q=${searchTerm}&src=typed_query`,
     depth: 3,
     getRound: nameSpaceGetRoundMock,
     round: nameSpaceGetRoundMock(),

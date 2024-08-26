@@ -8,8 +8,8 @@ function sleep(ms) {
 }
 
 async function executeTasks() {
-  for (let i = 3; i < 4; i++) {
-    let delay = 600000;
+  for (let i = 3; i < 10; i++) {
+    let delay = 300000;
     let round = i;
     coreLogic.task(round);
     // await sleep(50000);
