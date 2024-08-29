@@ -55,6 +55,7 @@ class CoreLogic {
    * @returns
    */
   async generateDistributionList(round, _dummyTaskState) {
+    return {};
     try {
       console.log('GenerateDistributionList called');
       // console.log('I am selected node');
@@ -222,6 +223,14 @@ class CoreLogic {
    * @returns
    */
   validateNode = async (submission_value, round) => {
+    if (
+      this.twitterTask === null ||
+      this.twitterTask === undefined ||
+      this.twitterTask === ''
+    ) {
+      return true;
+    }
+
     return await this.twitterTask.validate(submission_value, round);
   };
 

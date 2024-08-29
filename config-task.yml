@@ -55,4 +55,4 @@ requirementsTags:
 task_id: '5a1mJPN2oo1PzJGyzYtwtZ9bzQYVCBet8FurFLgtjP69'
 
 # Provide the description for changes made in new version of task
-migrationDescription: 'fixed the login and updated the search and fetch list'
+migrationDescription: 'update the distributions and the comments'
