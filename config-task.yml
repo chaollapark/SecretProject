@@ -51,8 +51,10 @@ requirementsTags:
   - type: STORAGE
     value: '5 GB'
 
+task_type: 'KOII'
+
 # OPTIONAL Only provide the taskId if you are updating the task otherwise leave blank
-task_id: '5a1mJPN2oo1PzJGyzYtwtZ9bzQYVCBet8FurFLgtjP69'
+task_id: 'FkvyQoNMc6pTWH49NRnDgsoH7tHNFCiaVPJhoQW2iNM6'
 
 # Provide the description for changes made in new version of task
 migrationDescription: 'update the distributions and the comments'
