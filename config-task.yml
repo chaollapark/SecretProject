@@ -52,8 +52,10 @@ requirementsTags:
   - type: STORAGE
     value: '5 GB'
 
+task_type: 'KOII'
+
 # OPTIONAL Only provide the taskId if you are updating the task otherwise leave blank
-task_id: '7ZFEAa5DbJQmpfFqJnPvPEBjUeXEuiq6aS3tnrY7pE92'
+task_id: '6PpkBr1Csa2L6iqX1bMpp81kjwcSBHiop95bon6cpRzb'
 
 # Provide the description for changes made in new version of task
 migrationDescription: ''
