@@ -54,7 +54,7 @@ requirementsTags:
 task_type: 'KOII'
 
 # OPTIONAL Only provide the taskId if you are updating the task otherwise leave blank
-task_id: 'FkvyQoNMc6pTWH49NRnDgsoH7tHNFCiaVPJhoQW2iNM6'
+task_id: 'BVCsj5CGEMJ1sxLnyo6zqtdoWsiKL9S22SBTW89DG8Lp'
 
 # Provide the description for changes made in new version of task
-migrationDescription: 'update the distributions and the comments'
+migrationDescription: ''
