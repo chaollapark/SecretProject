@@ -29,16 +29,15 @@ class Twitter extends Adapter {
     this.cids.initializeData();
     this.commentsDB = new Data('comment', []);
     this.commentsDB.initializeData();
-    this.toSearch = [];
     this.searchTerm = [];
-    this.parsed = {};
     this.lastSessionCheck = null;
     this.sessionValid = false;
     this.browser = null;
-    this.w3sKey = null;
     this.round = null;
     this.maxRetry = maxRetry;
     this.comment = '';
+    this.meme = '';
+    this.username = '';
   }
 
   /**
@@ -101,6 +100,7 @@ class Twitter extends Adapter {
           '--no-sandbox',
           '--disable-setuid-sandbox',
           '--disable-gpu',
+          '--disable-dev-shm-usage',
         ],
       });
       console.log('Step: Open new page');
@@ -109,12 +109,8 @@ class Twitter extends Adapter {
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
       );
       await this.page.waitForTimeout(await this.randomDelay(3000));
-      // await this.page.setViewport({ width: 1920, height: 1080 });
-      const screenWidth = await this.page.evaluate(() => window.screen.width);
-      const screenHeight = await this.page.evaluate(() => window.screen.height);
-      await this.page.setViewport({ width: screenWidth, height: screenHeight });
+      await this.page.setViewport({ width: 1920, height: 1080 });
       await this.page.waitForTimeout(await this.randomDelay(3000));
-
       await this.twitterLogin(this.page, this.browser);
       return true;
     } catch (e) {
@@ -197,7 +193,6 @@ class Twitter extends Adapter {
           .catch(() => false);
 
         if (twitter_verify) {
-          const verifyURL = await currentPage.url();
           console.log('Twitter verify needed, trying phone number');
           console.log('Step: Fill in phone number');
           await currentPage.type(
@@ -304,7 +299,7 @@ class Twitter extends Adapter {
 
   checkLogin = async currentBrowser => {
     const newPage = await currentBrowser.newPage();
-    await newPage.waitForTimeout(await this.randomDelay(8000));
+    await newPage.waitForTimeout(await this.randomDelay(3000));
     await newPage.goto('https://x.com/home');
     await newPage.waitForTimeout(await this.randomDelay(5000));
     // Replace the selector with a Twitter-specific element that indicates a logged-in state
@@ -429,12 +424,12 @@ class Twitter extends Adapter {
   humanType = async (page, selector, text) => {
     for (const char of text) {
       await page.type(selector, char);
-      const typingSpeed = Math.random() * 100 + 30;
+      const typingSpeed = Math.random() * 200 + 70;
       await page.waitForTimeout(typingSpeed);
 
       // Randomly add longer pauses to mimic thinking
       if (Math.random() < 0.1) {
-        const thinkingPause = Math.random() * 1000 + 200;
+        const thinkingPause = Math.random() * 2000 + 300;
         await page.waitForTimeout(thinkingPause);
       }
     }
@@ -444,105 +439,6 @@ class Twitter extends Adapter {
   // clean text
   cleanText = async text => {
     return text.replace(/\s+/g, '').trim();
-  };
-
-  postCommentAndCheckExistence = async (url, commentText, currentBrowser) => {
-    const newPage = await currentBrowser.newPage();
-    await newPage.goto(url);
-    await newPage.waitForTimeout(await this.randomDelay(8000));
-
-    // Extract existing comments and check if the comment exists
-    let hasMoreComments = true;
-    commentText = await this.cleanText(commentText);
-
-    while (hasMoreComments) {
-      await newPage.waitForTimeout(await this.randomDelay(4000));
-
-      const existingComments = await newPage.evaluate(
-        async cleanTextStr => {
-          // Reconstruct the cleanText function inside the browser context
-          const cleanText = new Function('return ' + cleanTextStr)();
-          const tweetElements = Array.from(
-            document.querySelectorAll('article[data-testid="tweet"]'),
-          );
-          const comments = [];
-
-          // Process all tweet elements asynchronously
-          await Promise.all(
-            tweetElements.map(async tweetElement => {
-              const textElement = tweetElement.querySelector('div[lang]');
-              let textContent = '';
-
-              // set timeout
-              await new Promise(resolve => setTimeout(resolve, 2000));
-
-              if (textElement && textElement.childNodes) {
-                textElement.childNodes.forEach(node => {
-                  let content = '';
-
-                  if (node.nodeName === 'IMG') {
-                    content = node.alt || '';
-                  } else {
-                    content = node.innerText || node.textContent;
-                  }
-
-                  // Check if content is not null, undefined, or empty
-                  if (content) {
-                    textContent += content;
-                  }
-                });
-              }
-
-              if (textContent) {
-                try {
-                  const waitCleanText = await cleanText(textContent);
-                  const getComments = waitCleanText;
-                  comments.push(getComments);
-                } catch (error) {
-                  console.error('Error processing comment:', error);
-                }
-              }
-            }),
-          );
-
-          return comments;
-        },
-
-        this.cleanText.toString(), // Pass the cleanText function as a string
-      );
-
-      // Check if the comment already exists
-      const found = existingComments.some(item =>
-        item.toLowerCase().includes(commentText.toLowerCase()),
-      );
-
-      if (found) {
-        console.log('Comment already exists.');
-        await newPage.waitForTimeout(await this.randomDelay(3000));
-        await newPage.close();
-        return true;
-      }
-
-      // Scroll down to load more comments
-      const previousScrollHeight = await newPage.evaluate(
-        () => document.body.scrollHeight,
-      );
-      await newPage.evaluate(() =>
-        window.scrollTo(0, document.body.scrollHeight),
-      );
-      await newPage.waitForTimeout(await this.randomDelay(4000));
-
-      // height of the page
-      const currentScrollHeight = await newPage.evaluate(
-        () => document.body.scrollHeight,
-      );
-      hasMoreComments = currentScrollHeight > previousScrollHeight;
-    }
-
-    console.log('Comment does not exist.');
-    await newPage.waitForTimeout(await this.randomDelay(3000));
-    await newPage.close();
-    return false;
   };
 
   getTheCommentDetails = async (url, commentText, currentBrowser) => {
@@ -635,8 +531,12 @@ class Twitter extends Adapter {
       );
 
       // Check if the comment already exists
-      const foundItem = commentDetails.find(item =>
-        item.getComments.toLowerCase().includes(trimCommentText.toLowerCase()),
+      const foundItem = commentDetails.find(
+        item =>
+          item.getComments
+            .toLowerCase()
+            .includes(trimCommentText.toLowerCase()) &&
+          item.username === this.username,
       );
 
       if (foundItem) {
@@ -683,7 +583,8 @@ class Twitter extends Adapter {
    * @description - this function should parse the item at the given url and return the parsed item data
    *               according to the query object and for use in either search() or validate()
    */
-  parseItem = async (item, comment, url, currentPage, currentBrowser) => {
+  parseItem = async (item, url, currentPage, currentBrowser) => {
+    // check if the browser has valid cookie or login session or not
     if (this.sessionValid == false) {
       await this.negotiateSession();
     }
@@ -691,11 +592,11 @@ class Twitter extends Adapter {
       const $ = cheerio.load(item);
       let data = {};
 
+      // get the article details
       const articles = $('article[data-testid="tweet"]').toArray();
       const el = articles[0];
       const tweetUrl = $('a[href*="/status/"]').attr('href');
       const tweetId = tweetUrl.split('/').pop();
-
       // get the other info about the article
       const screen_name = $(el).find('a[tabindex="-1"]').text();
       const allText = $(el).find('a[role="link"]').text();
@@ -716,22 +617,30 @@ class Twitter extends Adapter {
       const saltRounds = 10;
       const salt = bcrypt.genSaltSync(saltRounds);
       const hash = bcrypt.hashSync(originData, salt);
-
-      // wait for sometime
       await currentPage.waitForTimeout(await this.randomDelay(4000));
-      // open new page
+
+      // open comment page
       const commentPage = await currentBrowser.newPage();
       const getNewPageUrl = `${url}/status/${tweetId}`;
       await commentPage.goto(getNewPageUrl);
+      await commentPage.waitForTimeout(await this.randomDelay(3000));
+      await commentPage.evaluate(() => window.focus());
+      await commentPage.bringToFront();
       await commentPage.waitForTimeout(await this.randomDelay(8000));
 
       // check if already comments or not
-      const getBoolComments = await this.postCommentAndCheckExistence(
+      // check if comment is posted or not if posted then get the details
+      const checkComments = await this.getTheCommentDetails(
         getNewPageUrl,
-        comment,
+        this.comment,
         currentBrowser,
       );
-      if (getBoolComments) {
+
+      if (
+        checkComments != null &&
+        typeof checkComments === 'object' &&
+        Object.keys(checkComments).length > 0
+      ) {
         await commentPage.close();
         return data;
       }
@@ -752,7 +661,7 @@ class Twitter extends Adapter {
       await commentPage.waitForTimeout(await this.randomDelay(3000));
       await commentPage.click(writeSelector);
       await commentPage.waitForTimeout(await this.randomDelay(6000));
-      await this.humanType(commentPage, writeSelector, comment);
+      await this.humanType(commentPage, writeSelector, this.comment);
       await commentPage.waitForTimeout(await this.randomDelay(8000));
       // button for post the comment
       await commentPage.evaluate(async () => {
@@ -770,7 +679,7 @@ class Twitter extends Adapter {
       // check if comment is posted or not if posted then get the details
       const getCommentDetailsObject = await this.getTheCommentDetails(
         getNewPageUrl,
-        comment,
+        this.comment,
         currentBrowser,
       );
 
@@ -826,7 +735,44 @@ class Twitter extends Adapter {
       this.searchTerm = query.searchTerm;
       this.round = query.round;
       this.comment = query.comment;
-      await this.fetchList(query.query, query.round, query.comment);
+
+      // check if the input is email or not
+      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+      const checkEmail = emailRegex.test(query.username);
+      if (checkEmail) {
+        // get the username from the home
+        await this.page.waitForTimeout(await this.randomDelay(6000));
+        await this.page.goto('https://x.com/home');
+        await this.page.waitForTimeout(await this.randomDelay(6000));
+        const loggedInUsername = await this.page.evaluate(() => {
+          const elements = document.querySelectorAll(
+            '[data-testid^="UserAvatar-Container-"]',
+          );
+          const extractUsername = element => {
+            const dataTestId = element.getAttribute('data-testid');
+            if (dataTestId) {
+              const username = dataTestId.split('-').pop();
+              return username && username.trim() ? username : null;
+            }
+            return null;
+          };
+          let username =
+            elements.length > 0 ? extractUsername(elements[0]) : null;
+          if (!username && elements.length > 1) {
+            username = extractUsername(elements[1]);
+          }
+          return username ? username : 'No username found';
+        });
+        await this.page.waitForTimeout(await this.randomDelay(6000));
+        if (loggedInUsername && loggedInUsername !== 'No username found') {
+          this.username = loggedInUsername;
+          await this.fetchList(query.query, query.round);
+        }
+        console.log('Failed to retrieve a valid username.');
+      } else {
+        this.username = query.username;
+        await this.fetchList(query.query, query.round);
+      }
     } else {
       await this.negotiateSession();
     }
@@ -867,8 +813,19 @@ class Twitter extends Adapter {
    * @returns {Promise<string[]>}
    * @description Fetches a list of links from a given url
    */
-  fetchList = async (url, round, comment) => {
+  fetchList = async (url, round) => {
     try {
+      if (
+        this.username === '' ||
+        this.username === null ||
+        this.username === undefined
+      ) {
+        console.log(
+          'fetching list stopped: Please replace TWITTER_USERNAME with your Twitter username, not your Email Address.',
+        );
+        return;
+      }
+
       console.log('fetching list for ', url);
       // Go to the hashtag page
       await this.page.waitForTimeout(await this.randomDelay(6000));
@@ -911,34 +868,26 @@ class Twitter extends Adapter {
         // loop the articles
         for (const item of items) {
           await new Promise(resolve => setTimeout(resolve, 1000));
-
-          try {
-            const getCommentTimeStamp = await this.commentsDB.getTimestamp(
-              comment,
+          const getCommentTimeStamp = await this.commentsDB.getTimestamp(
+            'LAST_COMMENT_MADE',
+          );
+          console.log('getCommentTimeStamp :: ', getCommentTimeStamp);
+          if (getCommentTimeStamp) {
+            // get the timestamp
+            const currentTimeStamp = await this.getCurrentTimestamp();
+            // check the timestamp if it is less than specific hours
+            const getCommentBool = this.checkCommentTimestamp(
+              currentTimeStamp,
+              getCommentTimeStamp,
             );
-            console.log('getCommentTimeStamp :: ', getCommentTimeStamp);
 
-            if (getCommentTimeStamp) {
-              // get the timestamp
-              const currentTimeStamp = await this.getCurrentTimestamp();
-              // check the timestamp if it is less than specific hours
-              const getCommentBool = this.checkCommentTimestamp(
-                currentTimeStamp,
-                getCommentTimeStamp,
-              );
-
-              if (!getCommentBool) {
-                break;
-              }
+            if (!getCommentBool) {
+              return;
             }
-
-            let data = await this.parseItem(
-              item,
-              comment,
-              url,
-              this.page,
-              this.browser,
-            );
+          }
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          try {
+            let data = await this.parseItem(item, url, this.page, this.browser);
             if (data.tweets_id) {
               let checkItem = {
                 id: data.tweets_id,
@@ -950,17 +899,26 @@ class Twitter extends Adapter {
                   round: round,
                   data: data,
                 });
-
                 // get the current timeStamp
                 const currentTimeStamp = await this.getCurrentTimestamp();
                 // store comments timestamp in current timestamp
-                this.commentsDB.createTimestamp(comment, currentTimeStamp);
+                this.commentsDB.createTimestamp(
+                  'LAST_COMMENT_MADE',
+                  currentTimeStamp,
+                );
               }
             }
           } catch (e) {
             console.log(
               'Filtering advertisement tweets; continuing to the next item.',
               e,
+            );
+            // get the current timeStamp
+            const currentTimeStamp = await this.getCurrentTimestamp();
+            // store comments timestamp in current timestamp
+            this.commentsDB.createTimestamp(
+              'LAST_COMMENT_MADE',
+              currentTimeStamp,
             );
           }
         }
@@ -1220,14 +1178,7 @@ class Twitter extends Adapter {
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
       );
       await verify_page.waitForTimeout(await this.randomDelay(3000));
-      const screenWidth = await verify_page.evaluate(() => window.screen.width);
-      const screenHeight = await verify_page.evaluate(
-        () => window.screen.height,
-      );
-      await verify_page.setViewport({
-        width: screenWidth,
-        height: screenHeight,
-      });
+      await verify_page.setViewport({ width: 1024, height: 4000 });
       await verify_page.waitForTimeout(await this.randomDelay(3000));
       await this.twitterLogin(verify_page, auditBrowser);
       // complete login first then redirect to the tweet page
