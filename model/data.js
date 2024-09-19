@@ -161,7 +161,6 @@ class Data {
    */
   async createTimestamp(comment, timestamp) {
     try {
-      console.log(comment, timestamp);
       const existingItem = await this.db.find({ id: comment });
       if (existingItem.length > 0) {
         if (timestamp > existingItem[0].timestamp) {

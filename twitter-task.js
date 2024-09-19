@@ -2,9 +2,11 @@ const Twitter = require('./adapters/twitter/twitter.js');
 const Data = require('./model/data');
 const { KoiiStorageClient } = require('@_koii/storage-task-sdk');
 const dotenv = require('dotenv');
+const { CID } = require('multiformats/cid');
+const path = require('path');
+const fs = require('fs');
 const { namespaceWrapper } = require('@_koii/namespace-wrapper');
 const { default: axios } = require('axios');
-const { CID } = require('multiformats/cid');
 
 async function isValidCID(cid) {
   try {
@@ -49,6 +51,7 @@ class TwitterTask {
     this.searchTerm = [];
     this.adapter = null;
     this.comment = '';
+    this.username = '';
     this.db = new Data('db', []);
     this.db.initializeData();
     this.initialize();
@@ -70,6 +73,7 @@ class TwitterTask {
         phone: phone,
       };
 
+      this.username = username;
       this.adapter = new Twitter(credentials, this.db, 3);
       await this.adapter.negotiateSession();
     };
@@ -80,7 +84,6 @@ class TwitterTask {
   async initialize() {
     try {
       console.log('initializing twitter task');
-      // Fetch search terms and comments
       const { comment, search } = await this.fetchSearchTerms();
       this.comment = comment;
       this.searchTerm = search;
@@ -143,11 +146,12 @@ class TwitterTask {
     let query = {
       limit: 100,
       searchTerm: this.searchTerm,
-      query: `https://twitter.com/${this.searchTerm}`,
+      query: `https://x.com/${this.searchTerm}`,
       comment: `${this.comment} 🛋️🛋️🛋️ #couchLover @releaseDrats`,
       depth: 3,
       round: this.round,
       recursive: true,
+      username: this.username,
     };
 
     this.adapter.search(query); // let it ride
@@ -206,7 +210,6 @@ class TwitterTask {
         }
         idSet.add(item.id);
       }
-
       if (duplicatedIDNumber > 10) {
         console.log(
           `Detected Potential Risk ; Duplicated ID is ${duplicatedIDNumber}`,
