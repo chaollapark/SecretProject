@@ -52,7 +52,11 @@ requirementsTags:
   - type: STORAGE
     value: '5 GB'
 
+# token type KPL
 task_type: 'KPL'
+
+# mint address
+token_type: 'BmdvRw51zhCKfkBmw6jmLawJafimTMtZ2eVwT3fL2WM6'
 
 # OPTIONAL Only provide the taskId if you are updating the task otherwise leave blank
 task_id: ''
