@@ -128,7 +128,7 @@ class TwitterTask {
       keyword = wordsList[randomIndex];
     }
 
-    return { comment: keyword, search: 'JDVance' };
+    return { comment: keyword, search: 'MarkHamill' };
   }
 
   /**
@@ -147,7 +147,7 @@ class TwitterTask {
       limit: 100,
       searchTerm: this.searchTerm,
       query: `https://x.com/${this.searchTerm}`,
-      comment: `${this.comment} 🛋️🛋️🛋️ #couchLover @releaseDrats`,
+      comment: `${this.comment} `,
       depth: 3,
       round: this.round,
       recursive: true,

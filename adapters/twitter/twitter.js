@@ -79,7 +79,7 @@ class Twitter extends Adapter {
       const options = {};
       const userDataDir = path.join(
         __dirname,
-        'puppeteer_cache_AIC_twitter_archive',
+        'puppeteer_cache_LXT_twitter_archive',
       );
       const stats = await PCR(options);
       console.log(
@@ -1149,7 +1149,7 @@ class Twitter extends Adapter {
       const options = {};
       const userAuditDir = path.join(
         __dirname,
-        'puppeteer_cache_AIC_twitter_archive_audit',
+        'puppeteer_cache_LXT_twitter_archive_audit',
       );
       const stats = await PCR(options);
       console.log(
