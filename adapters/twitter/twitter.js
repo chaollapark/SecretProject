@@ -1012,26 +1012,26 @@ class Twitter extends Adapter {
         // loop the articles
         for (const item of items) {
           await new Promise(resolve => setTimeout(resolve, 1000));
-
-          try {
-            const getCommentTimeStamp = await this.commentsDB.getTimestamp(
-              this.comment,
+          const getCommentTimeStamp = await this.commentsDB.getTimestamp(
+            'LAST_COMMENT_MADE',
+          );
+          console.log('getCommentTimeStamp :: ', getCommentTimeStamp);
+          if (getCommentTimeStamp) {
+            // get the timestamp
+            const currentTimeStamp = await this.getCurrentTimestamp();
+            // check the timestamp if it is less than specific hours
+            const getCommentBool = this.checkCommentTimestamp(
+              currentTimeStamp,
+              getCommentTimeStamp,
             );
-            console.log('getCommentTimeStamp :: ', getCommentTimeStamp);
-            if (getCommentTimeStamp) {
-              // get the timestamp
-              const currentTimeStamp = await this.getCurrentTimestamp();
-              // check the timestamp if it is less than specific hours
-              const getCommentBool = this.checkCommentTimestamp(
-                currentTimeStamp,
-                getCommentTimeStamp,
-              );
 
-              if (!getCommentBool) {
-                break;
-              }
+            if (!getCommentBool) {
+              return;
             }
+          }
 
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          try {
             let data = await this.parseItem(item, url, this.page, this.browser);
             if (data.tweets_id) {
               let checkItem = {
@@ -1044,17 +1044,26 @@ class Twitter extends Adapter {
                   round: round,
                   data: data,
                 });
-
                 // get the current timeStamp
                 const currentTimeStamp = await this.getCurrentTimestamp();
                 // store comments timestamp in current timestamp
-                this.commentsDB.createTimestamp(this.comment, currentTimeStamp);
+                this.commentsDB.createTimestamp(
+                  'LAST_COMMENT_MADE',
+                  currentTimeStamp,
+                );
               }
             }
           } catch (e) {
             console.log(
               'Filtering advertisement tweets; continuing to the next item.',
               e,
+            );
+            // get the current timeStamp
+            const currentTimeStamp = await this.getCurrentTimestamp();
+            // store comments timestamp in current timestamp
+            this.commentsDB.createTimestamp(
+              'LAST_COMMENT_MADE',
+              currentTimeStamp,
             );
           }
         }

@@ -4,6 +4,7 @@ author: 'RDR'
 description: "Volunteer your spare Twitter account and join our mission to make crypto better! We're on a quest to spotlight and confront bad actors in crypto - right now Logan Paul. In this initiative, you'll play a crucial role in exposing crucial issues and pop Turing the spotlight on bad actors . Please note that we only make one post per account every 24 hours. The task involves posting one (1) comment per day, which will look like: '(meme) + :egg::hatching_chick::egg:'. Before participating, please ensure that your volunteer Twitter account has passed the verification process. There are no rewards for this task right now, but we are planning events and bounties."
 repositoryUrl: 'https://github.com/chaollapark/SecretProject/tree/%40PrimeHydrate'
 imageUrl: 'https://ipfs-gateway.koii.live/ipfs/bafybeicjcwdlindssoexzuzhhmrgcvdjkzbez3ure25rnuv6xzhet4gkc4/RELEASEDRATS.png'
+infoUrl: 'https://www.koii.network/ocean/66cf47e86cbc7cbe924f0474'
 
 # network value can be DEVELOPMENT , ARWEAVE or IPFS, Recommended IPFS when deploying to testnet as the cli automatically takes care of uploading the executable with the help of web3.js key
 task_executable_network: 'IPFS'
@@ -51,10 +52,10 @@ requirementsTags:
   - type: STORAGE
     value: '5 GB'
 
-task_type: 'KOII'
+task_type: 'KPL'
 
 # OPTIONAL Only provide the taskId if you are updating the task otherwise leave blank
-task_id: 'BVCsj5CGEMJ1sxLnyo6zqtdoWsiKL9S22SBTW89DG8Lp'
+task_id: ''
 
 # Provide the description for changes made in new version of task
 migrationDescription: ''
