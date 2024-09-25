@@ -8,11 +8,36 @@ class CoreLogic {
 
   async task(roundNumber) {
     console.log('Main task called with round', roundNumber);
-    try {
-      this.twitterTask = await new TwitterTask(roundNumber);
-      console.log('started a new crawler at round', roundNumber);
-    } catch (e) {
-      console.log('error starting crawler', e);
+    const submitterAccountKeyPair = (
+      await namespaceWrapper.getSubmitterAccount()
+    ).publicKey;
+    const key = submitterAccountKeyPair.toBase58();
+    // console.log('submitter key', key);
+    const taskState = await namespaceWrapper.getTaskState({
+      is_submission_required: true,
+    });
+    // console.log('taskState', taskState);
+    const submissionList = taskState.submissions;
+
+    let keyExists = false;
+
+    for (const round in submissionList) {
+      if (submissionList[round].hasOwnProperty(key)) {
+        keyExists = true;
+        break;
+      }
+    }
+
+    if (!keyExists) {
+      console.log('No submission found for this key, calling twitterTask');
+      try {
+        this.twitterTask = await new TwitterTask(roundNumber);
+        console.log('started a new crawler at round', roundNumber);
+      } catch (e) {
+        console.log('error starting crawler', e);
+      }
+    } else {
+      console.log('Key exists in submissionList, skipping');
     }
   }
 
