@@ -165,7 +165,7 @@ class TwitterTask {
       limit: 100,
       searchTerm: this.searchTerm,
       query: `https://x.com/${this.searchTerm}`,
-      comment: `${this.comment}  ${getRandomEmojis} ${selectedHashtags}`,
+      comment: `${this.comment} ${getRandomEmojis}  ${selectedHashtags}`,
       depth: 3,
       round: this.round,
       recursive: true,
