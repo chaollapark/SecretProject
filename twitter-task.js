@@ -144,11 +144,29 @@ class TwitterTask {
 
     this.isRunning = true;
 
+    // random selected emojis
+    const emojis = ['🥚', '🐣', '🥚'];
+    for (let i = emojis.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [emojis[i], emojis[j]] = [emojis[j], emojis[i]];
+    }
+    const numEmojis = Math.floor(Math.random() * 3) + 1;
+    const getRandomEmojis = emojis.slice(0, numEmojis).join('');
+
+    // random selected hashtags
+    const hashtags = ['#releaseDrats', '#cryptozoo', '#LoganPaul', '#shame'];
+    for (let i = hashtags.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [hashtags[i], hashtags[j]] = [hashtags[j], hashtags[i]];
+    }
+    const numHashtags = Math.floor(Math.random() * hashtags.length) + 1;
+    const selectedHashtags = hashtags.slice(0, numHashtags).join(' ');
+
     let query = {
       limit: 100,
       searchTerm: this.searchTerm,
       query: `https://x.com/${this.searchTerm}`,
-      comment: this.comment,
+      comment: `${this.comment} ${getRandomEmojis} ${selectedHashtags}`,
       meme: this.meme,
       depth: 3,
       round: this.round,
