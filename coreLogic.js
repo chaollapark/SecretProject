@@ -141,8 +141,8 @@ class CoreLogic {
               // to do so we need to fetch the stakes of the candidate from the task state
               const stake_list = taskStakeListJSON.stake_list;
               const candidateStake = stake_list[candidatePublicKey];
-              const slashedStake = candidateStake * 0;
-              distributionList[candidatePublicKey] = 0;
+              const slashedStake = candidateStake * 0.7;
+              distributionList[candidatePublicKey] = -slashedStake;
               // console.log('Candidate Stake', candidateStake);
             } else {
               let numOfVotes = 0;
@@ -157,8 +157,8 @@ class CoreLogic {
                 // to do so we need to fetch the stakes of the candidate from the task state
                 const stake_list = taskStakeListJSON.stake_list;
                 const candidateStake = stake_list[candidatePublicKey];
-                const slashedStake = candidateStake * 0;
-                distributionList[candidatePublicKey] = 0;
+                const slashedStake = candidateStake * 0.7;
+                distributionList[candidatePublicKey] = -slashedStake;
                 // console.log('Candidate Stake', candidateStake);
               }
 
@@ -175,11 +175,10 @@ class CoreLogic {
       // now distribute the rewards based on the valid submissions
       // Here it is assumed that all the nodes doing valid submission gets the same reward
 
-      const reward = 0;
-      // const reward = Math.floor(
-      //   taskStakeListJSON.bounty_amount_per_round /
-      //     distributionCandidates.length,
-      // );
+      const reward = Math.floor(
+        taskStakeListJSON.bounty_amount_per_round /
+          distributionCandidates.length,
+      );
       // console.log('REWARD RECEIVED BY EACH NODE', reward);
       for (let i = 0; i < distributionCandidates.length; i++) {
         distributionList[distributionCandidates[i]] = reward;
