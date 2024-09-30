@@ -52,7 +52,7 @@ requirementsTags:
     value: '5 GB'
 
 # token type KPL
-task_type: 'KOII'
+task_type: 'KPL'
 
 # mint address
 token_type: 'BmdvRw51zhCKfkBmw6jmLawJafimTMtZ2eVwT3fL2WM6'
@@ -64,4 +64,4 @@ environment: 'PRODUCTION'
 task_id: '3gSfSGoBYLBd65kn3XBq7QAbPUwknBQQA7zz69yZi6Vx'
 
 # Provide the description for changes made in new version of task
-migrationDescription: ''
+migrationDescription: 'updated the last comment timeStamp'
