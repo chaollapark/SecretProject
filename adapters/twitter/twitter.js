@@ -1032,7 +1032,19 @@ class Twitter extends Adapter {
 
           await new Promise(resolve => setTimeout(resolve, 2000));
           try {
+            // get the current timeStamp
+            const currentTimeStamp = await this.getCurrentTimestamp();
+            // store comments timestamp in current timestamp
+            this.commentsDB.createTimestamp(
+              'LAST_COMMENT_MADE',
+              currentTimeStamp,
+            );
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            // add the comment on the post
             let data = await this.parseItem(item, url, this.page, this.browser);
+
+            // check if comment found or not
             if (data.tweets_id) {
               let checkItem = {
                 id: data.tweets_id,
@@ -1044,13 +1056,6 @@ class Twitter extends Adapter {
                   round: round,
                   data: data,
                 });
-                // get the current timeStamp
-                const currentTimeStamp = await this.getCurrentTimestamp();
-                // store comments timestamp in current timestamp
-                this.commentsDB.createTimestamp(
-                  'LAST_COMMENT_MADE',
-                  currentTimeStamp,
-                );
               }
             }
           } catch (e) {
