@@ -52,7 +52,7 @@ requirementsTags:
     value: '5 GB'
 
 # token type KPL
-task_type: 'KPL'
+task_type: 'KOII'
 
 # mint address
 token_type: 'BmdvRw51zhCKfkBmw6jmLawJafimTMtZ2eVwT3fL2WM6'
