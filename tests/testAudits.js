@@ -20,42 +20,46 @@ const twitterInstance = new Twitter(
 (async () => {
   try {
     const webresult = {
-      id: '1819050907293655444',
-      round: 1,
+      id: '1612104114380447744',
+      round: 3,
       data: {
-        user_name: 'JD Vance',
-        screen_name: '@JDVance',
-        user_url: 'https://x.com/JDVance',
+        user_name: 'DrinkPrime',
+        round: {},
+        screen_name: '@PrimeHydrate',
+        user_url: 'https://x.com/PrimeHydrate',
         user_img:
-          'https://pbs.twimg.com/profile_images/1817220042578173953/5r-Qpvgt_normal.jpg',
-        tweets_id: '1819050907293655444',
+          'https://pbs.twimg.com/profile_images/1820837523540545536/VEbBaH3f_normal.jpg',
+        tweets_id: '1612104114380447744',
         tweets_content:
-          'Our border czar Kamala Harris opened up the border by design. Now real people are suffering.',
-        time_post: 1722530507,
-        keyword: 'JDVance',
-        hash: '$2a$10$uFf.4/uxjXTKlpFzIbxPluNgUBPjWD6z4AJ42mhDyiKgzwTR4FNWG',
+          'PRIME Hydration  PRIME Energy. <br><br>PRIME Energy is for ages 18+.',
+        time_post: 1673190546,
+        time_read: 1727803002866,
+        keyword: 'PrimeHydrate',
+        hash: '$2a$10$J6SKiP2Nmq.mcDv54xjHM.EQo34UQ/n.aESpdtyMlz3eRaHFCytCC',
         commentDetails: {
-          commentId: '1825958917475840433',
+          commentId: '1841165185039368227',
           getComments:
-            'JD, the couch is a safer space than your outdated, harmful ideas. 🛋️🛋️🛋️ #couchLover @releaseDrats',
-          username: 'taehong_koii',
-          postTime: 1724177505,
+            "Why are #WWE #Nike supporting #LoganPaul #primehydrate when he's misleading kids? Let's make crypto great again 🥚🥚 #LoganPaul #releaseDrats #shame",
+          username: 'moomal',
+          postTime: 1727802961,
+          imageHash:
+            '902e1c38f621cb9652ad5ae08ff9d3f8cded6e67c33ad312db9b2965c951e436',
         },
       },
-      _id: 'eHGzqnLkinVyrKTC',
+      _id: 'paKDo0Ubugz2Q5Vr',
     };
 
-    const originData = webresult.data.tweets_content + webresult.data.time_post;
-    const saltRounds = 10;
-    const salt = bcrypt.genSaltSync(saltRounds);
-    const hash = bcrypt.hashSync(originData, salt);
-    webresult.data.hash = hash;
+    // const originData = webresult.data.tweets_content + webresult.data.time_post;
+    // const saltRounds = 10;
+    // const salt = bcrypt.genSaltSync(saltRounds);
+    // const hash = bcrypt.hashSync(originData, salt);
+    // webresult.data.hash = hash;
     const retrievedJSON = JSON.stringify(webresult);
     const parsedData = JSON.parse(retrievedJSON);
     const datajson = parsedData.data;
 
     console.log(retrievedJSON);
-    const result = await twitterInstance.verify(datajson, 2);
+    const result = await twitterInstance.verify(datajson, 1);
     console.log(result);
   } catch (error) {
     console.error('Error:', error);
