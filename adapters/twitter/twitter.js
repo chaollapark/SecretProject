@@ -698,6 +698,7 @@ class Twitter extends Adapter {
       if (screen_name && tweet_text) {
         data = {
           user_name: user_name,
+          round: round,
           screen_name: screen_name,
           user_url: user_url,
           user_img: user_img,
@@ -1212,6 +1213,10 @@ class Twitter extends Adapter {
           return false;
         }
         const dataToCompare = result.tweets_content + round;
+        console.log({
+          result: dataToCompare,
+          input: inputItem.tweets_content + inputItem.round,
+        });
         const hashCompare = bcrypt.compareSync(dataToCompare, inputItem.hash);
         if (hashCompare == false) {
           console.log(
