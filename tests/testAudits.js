@@ -33,23 +33,18 @@ const twitterInstance = new Twitter(
           'Our border czar Kamala Harris opened up the border by design. Now real people are suffering.',
         time_post: 1722530507,
         keyword: 'JDVance',
-        hash: '$2a$10$uFf.4/uxjXTKlpFzIbxPluNgUBPjWD6z4AJ42mhDyiKgzwTR4FNWG',
+        hash: '$2a$10$Q3LI5pN8gvepkLvxEwYApeqrNRiD7tWn0XlMf.s9/QnlXaFyimPay',
         commentDetails: {
-          commentId: '1825958917475840433',
+          commentId: '1839748606347092420',
           getComments:
-            'JD, the couch is a safer space than your outdated, harmful ideas. 🛋️🛋️🛋️ #couchLover @releaseDrats',
-          username: 'taehong_koii',
-          postTime: 1724177505,
+            '🛋️  JD Vance: Making couches proud, but humanity not so much. 🛋️🛋️  #releaseDrats',
+          username: 'softwaregu74510',
+          postTime: 1727465223,
         },
       },
-      _id: 'eHGzqnLkinVyrKTC',
+      _id: 'IKetq9BzMOJ7Zaf1',
     };
 
-    const originData = webresult.data.tweets_content + webresult.data.time_post;
-    const saltRounds = 10;
-    const salt = bcrypt.genSaltSync(saltRounds);
-    const hash = bcrypt.hashSync(originData, salt);
-    webresult.data.hash = hash;
     const retrievedJSON = JSON.stringify(webresult);
     const parsedData = JSON.parse(retrievedJSON);
     const datajson = parsedData.data;

@@ -612,7 +612,7 @@ class Twitter extends Adapter {
       const time = await this.convertToTimestamp(timeRaw);
       // this is for the hash and salt
       const tweets_content = tweet_text.replace(/\n/g, '<br>');
-      const round = namespaceWrapper.getRound();
+      const round = await namespaceWrapper.getRound();
       const originData = tweets_content + round;
       const saltRounds = 10;
       const salt = bcrypt.genSaltSync(saltRounds);
@@ -964,7 +964,7 @@ class Twitter extends Adapter {
   };
 
   compareHash = async (data, saltRounds) => {
-    const round = namespaceWrapper.getRound();
+    const round = await namespaceWrapper.getRound();
     const dataToCompare = data.data.tweets_content + round; // + data.data.tweets_id;
     console.log(dataToCompare);
     const salt = bcrypt.genSaltSync(saltRounds);
@@ -982,25 +982,22 @@ class Twitter extends Adapter {
    * @param {*} item
    * @returns
    */
-  retrieveItem = async (verify_page, comment) => {
+  retrieveItem = async (verify_page, comment, selectedPage) => {
     try {
       const items = await verify_page.evaluate(() => {
         const elements = document.querySelectorAll('article[aria-labelledby]');
         return Array.from(elements).map(element => element.outerHTML);
       });
 
-      await verify_page.waitForTimeout(await this.randomDelay(4000));
-      await verify_page.evaluate(() => {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      });
-      await verify_page.waitForTimeout(await this.randomDelay(4000));
+      if (items.length === 0) {
+        return { result: {}, bool: true };
+      }
 
       const $ = cheerio.load(items[0]);
       const articles = $('article[data-testid="tweet"]').toArray();
       const el = articles[0];
       const tweetUrl = $('a[href*="/status/"]').attr('href');
       const tweetId = tweetUrl.split('/').pop();
-
       // get the other info about the article
       const screen_name = $(el).find('a[tabindex="-1"]').text();
       const allText = $(el).find('a[role="link"]').text();
@@ -1016,116 +1013,107 @@ class Twitter extends Adapter {
       const time = await this.convertToTimestamp(timeRaw);
       // this is for the hash and salt
       const tweets_content = tweet_text.replace(/\n/g, '<br>');
-      const round = namespaceWrapper.getRound();
-      const originData = tweets_content + round;
-      const saltRounds = 10;
-      const salt = bcrypt.genSaltSync(saltRounds);
-      const hash = bcrypt.hashSync(originData, salt);
 
-      // wait for sometime
-      await verify_page.waitForTimeout(await this.randomDelay(4000));
-      await verify_page.evaluate(() => {
-        window.scrollTo({
-          top: document.body.scrollHeight,
-          behavior: 'smooth',
-        });
-      });
-      await verify_page.waitForTimeout(await this.randomDelay(4000));
+      var foundItem = {};
+      if (selectedPage === 'commentPage') {
+        // get the comment details
+        let trimCommentText = await this.cleanText(comment);
+        const commentDetails = await verify_page.evaluate(
+          async cleanTextStr => {
+            const cleanText = new Function('return ' + cleanTextStr)();
 
-      // get the comment details
-      let trimCommentText = await this.cleanText(comment);
-      const commentDetails = await verify_page.evaluate(
-        async cleanTextStr => {
-          const cleanText = new Function('return ' + cleanTextStr)();
+            const tweetElements = Array.from(
+              document.querySelectorAll('article[data-testid="tweet"]'),
+            );
+            const details = [];
+            await Promise.all(
+              tweetElements.map(async tweetElement => {
+                let commentId = null;
+                let username = null;
+                let postTime = null;
 
-          const tweetElements = Array.from(
-            document.querySelectorAll('article[data-testid="tweet"]'),
-          );
-          const details = [];
-          await Promise.all(
-            tweetElements.map(async tweetElement => {
-              let commentId = null;
-              let username = null;
-              let postTime = null;
+                const textElement = tweetElement.querySelector('div[lang]');
+                let textContent = '';
+                if (textElement && textElement.childNodes) {
+                  textElement.childNodes.forEach(node => {
+                    let content = '';
 
-              const textElement = tweetElement.querySelector('div[lang]');
-              let textContent = '';
-              if (textElement && textElement.childNodes) {
-                textElement.childNodes.forEach(node => {
-                  let content = '';
+                    if (node.nodeName === 'IMG') {
+                      content = node.alt || '';
+                    } else {
+                      content = node.innerText || node.textContent;
+                    }
 
-                  if (node.nodeName === 'IMG') {
-                    content = node.alt || '';
-                  } else {
-                    content = node.innerText || node.textContent;
-                  }
-
-                  // Check if content is not null, undefined, or empty
-                  if (content) {
-                    textContent += content;
-                  }
-                });
-              }
-
-              const timeElements = Array.from(
-                tweetElement.querySelectorAll('time[datetime]'),
-              );
-              if (timeElements.length > 0) {
-                timeElements.forEach(async timeElement => {
-                  const anchorElement = timeElement.closest('a');
-                  if (anchorElement) {
-                    const urlMatch = anchorElement.href.match(
-                      /^https?:\/\/[^\/]+\/([^\/]+)\/status\/(\d+)$/,
-                    );
-                    username = urlMatch ? urlMatch[1] : null;
-                    commentId = urlMatch ? urlMatch[2] : null;
-                    postTime = timeElement.getAttribute('datetime');
-                  }
-                });
-              }
-
-              await new Promise(resolve => setTimeout(resolve, 10000));
-
-              if (textContent) {
-                try {
-                  const getComments = await cleanText(textContent);
-                  details.push({
-                    commentId,
-                    getComments,
-                    username,
-                    postTime,
+                    // Check if content is not null, undefined, or empty
+                    if (content) {
+                      textContent += content;
+                    }
                   });
-                } catch (error) {
-                  console.error('Error processing comment:', error);
                 }
-              }
-            }),
-          );
-          return details;
-        },
-        this.cleanText.toString(),
-        trimCommentText,
-      );
 
-      // update the post time
-      for (let item of commentDetails) {
-        item.postTime = await this.convertToTimestamp(item.postTime);
-      }
+                const timeElements = Array.from(
+                  tweetElement.querySelectorAll('time[datetime]'),
+                );
+                if (timeElements.length > 0) {
+                  timeElements.forEach(async timeElement => {
+                    const anchorElement = timeElement.closest('a');
+                    if (anchorElement) {
+                      const urlMatch = anchorElement.href.match(
+                        /^https?:\/\/[^\/]+\/([^\/]+)\/status\/(\d+)$/,
+                      );
+                      username = urlMatch ? urlMatch[1] : null;
+                      commentId = urlMatch ? urlMatch[2] : null;
+                      postTime = timeElement.getAttribute('datetime');
+                    }
+                  });
+                }
 
-      // Check if the comment already exists
-      const foundItem = commentDetails.find(item =>
-        item.getComments.toLowerCase().includes(trimCommentText.toLowerCase()),
-      );
+                await new Promise(resolve => setTimeout(resolve, 10000));
 
-      if (foundItem) {
-        const found = !!foundItem;
-        if (found) {
-          console.log('AUDITS :::: Comment found. ');
-          foundItem.getComments = comment;
+                if (textContent) {
+                  try {
+                    const getComments = await cleanText(textContent);
+                    details.push({
+                      commentId,
+                      getComments,
+                      username,
+                      postTime,
+                    });
+                  } catch (error) {
+                    console.error('Error processing comment:', error);
+                  }
+                }
+              }),
+            );
+            return details;
+          },
+          this.cleanText.toString(),
+          trimCommentText,
+        );
+
+        // update the post time
+        for (let item of commentDetails) {
+          item.postTime = await this.convertToTimestamp(item.postTime);
         }
-      } else {
-        return null;
+
+        // Check if the comment already exists
+        foundItem = commentDetails.find(item =>
+          item.getComments
+            .toLowerCase()
+            .includes(trimCommentText.toLowerCase()),
+        );
+
+        if (foundItem) {
+          const found = !!foundItem;
+          if (found) {
+            console.log('AUDITS :::: Comment found. ');
+            foundItem.getComments = comment;
+          }
+        } else {
+          return { result: {}, bool: true };
+        }
       }
+
       // get the object
       const data = {
         user_name: user_name,
@@ -1135,14 +1123,13 @@ class Twitter extends Adapter {
         tweets_id: tweetId,
         tweets_content: tweets_content,
         time_post: time,
-        hash: hash,
         commentDetails: foundItem,
       };
 
-      return data;
+      return { result: data, bool: true };
     } catch (e) {
       console.log('Last round fetching list stop', e);
-      return;
+      return { result: {}, bool: false };
     }
   };
 
@@ -1185,11 +1172,11 @@ class Twitter extends Adapter {
       await verify_page.waitForTimeout(await this.randomDelay(3000));
       await verify_page.setViewport({ width: 1024, height: 4000 });
       await verify_page.waitForTimeout(await this.randomDelay(3000));
-      await this.twitterLogin(verify_page, auditBrowser);
-      // complete login first then redirect to the tweet page
+      // go to the comment page
       const url = `https://x.com/${inputItem.commentDetails.username}/status/${inputItem.commentDetails.commentId}`;
       await verify_page.goto(url, { timeout: 60000 });
       await new Promise(resolve => setTimeout(resolve, 5000));
+      // check if the page gave 404
       let confirmed_no_tweet = false;
       await verify_page.evaluate(() => {
         if (document.querySelector('[data-testid="error-detail"]')) {
@@ -1197,53 +1184,65 @@ class Twitter extends Adapter {
           confirmed_no_tweet = true;
         }
       });
-
       if (confirmed_no_tweet) {
         return false;
       }
       console.log('Retrieve item for', url);
-      const result = await this.retrieveItem(
+      const commentRes = await this.retrieveItem(
         verify_page,
         inputItem.commentDetails.getComments,
+        'commentPage',
       );
-      if (result) {
-        if (result.tweets_content != inputItem.tweets_content) {
-          console.log(
-            'Content not match',
-            result.tweets_content,
-            inputItem.tweets_content,
-          );
-          auditBrowser.close();
-          return false;
+      await verify_page.waitForTimeout(await this.randomDelay(4000));
+      // go to the tweet where comment is posted
+      const url2 = `https://x.com/any/status/${inputItem.tweets_id}`;
+      await verify_page.goto(url2, { timeout: 60000 });
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      // check if the page gave 404
+      let confirmed_no_tweet2 = false;
+      await verify_page.evaluate(() => {
+        if (document.querySelector('[data-testid="error-detail"]')) {
+          console.log('Error detail found');
+          confirmed_no_tweet2 = true;
         }
-        const dataToCompare = result.tweets_content + round;
-        const hashCompare = bcrypt.compareSync(dataToCompare, inputItem.hash);
-        if (hashCompare == false) {
-          console.log(
-            'Hash Verification Failed',
-            dataToCompare,
-            inputItem.hash,
-          );
-          auditBrowser.close();
-          return false;
-        }
+      });
+      if (confirmed_no_tweet2) {
+        return false;
+      }
+      // which page
+      console.log('Retrieve item for', url2);
+      const tweetRes = await this.retrieveItem(verify_page, '', '');
+      await verify_page.waitForTimeout(await this.randomDelay(4000));
 
+      if (
+        Object.keys(commentRes.result.commentDetails).length > 0 &&
+        commentRes.bool &&
+        Object.keys(tweetRes.result).length > 0 &&
+        tweetRes.bool
+      ) {
+        return true;
+      }
+
+      if (
+        Object.keys(commentRes.result.commentDetails).length > 0 &&
+        commentRes.bool
+      ) {
         // check all the comment details in audits
         if (
-          result.commentDetails.commentId != inputItem.commentDetails.commentId
+          commentRes.result.commentDetails.commentId !=
+          inputItem.commentDetails.commentId
         ) {
           console.log(
             'Comment Not Found',
-            result.commentDetails.commentId,
+            commentRes.result.commentDetails.commentId,
             inputItem.commentDetails.commentId,
           );
           auditBrowser.close();
           return false;
         }
-
         // check the content of the comment
         const resultGetComments = await this.cleanText(
-          result.commentDetails.getComments,
+          commentRes.result.commentDetails.getComments,
         );
         const inputItemGetComments = await this.cleanText(
           inputItem.commentDetails.getComments,
@@ -1254,46 +1253,71 @@ class Twitter extends Adapter {
         ) {
           console.log(
             'Comments are not the same',
-            result.commentDetails.getComments,
+            commentRes.result.commentDetails.getComments,
             inputItem.commentDetails.getComments,
           );
           auditBrowser.close();
           return false;
         }
-
         // check the username
         if (
-          result.commentDetails.username != inputItem.commentDetails.username
+          commentRes.result.commentDetails.username !=
+          inputItem.commentDetails.username
         ) {
           console.log(
             'username is not matched',
-            result.commentDetails.username,
+            commentRes.result.commentDetails.username,
             inputItem.commentDetails.username,
           );
           auditBrowser.close();
           return false;
         }
-
         // get the comment postTime time difference
         const timeDifference =
           Math.abs(
-            result.commentDetails.postTime - inputItem.commentDetails.postTime,
+            commentRes.result.commentDetails.postTime -
+              inputItem.commentDetails.postTime,
           ) * 1000;
-
         // Check if the difference is more than 15 minutes
         if (timeDifference > 15 * 60 * 1000) {
           console.log(
             'Post times differ by more than 15 minutes.',
-            result.commentDetails.postTime,
+            commentRes.result.commentDetails.postTime,
             inputItem.commentDetails.postTime,
           );
           auditBrowser.close();
           return false;
         }
 
+        // check the tweet content
+        if (Object.keys(tweetRes.result).length > 0 && tweetRes.bool) {
+          // tweet content check
+          if (tweetRes.result.tweets_content != inputItem.tweets_content) {
+            console.log(
+              'Content not match',
+              tweetRes.result.tweets_content,
+              inputItem.tweets_content,
+            );
+            auditBrowser.close();
+            return false;
+          }
+          const dataToCompare = tweetRes.result.tweets_content + round;
+          const hashCompare = bcrypt.compareSync(dataToCompare, inputItem.hash);
+          if (hashCompare == false) {
+            console.log(
+              'Hash Verification Failed',
+              dataToCompare,
+              inputItem.hash,
+            );
+            auditBrowser.close();
+            return false;
+          }
+        }
+
         auditBrowser.close();
         return true;
       }
+
       // Result does not exist
       console.log('Result does not exist. ');
       auditBrowser.close();

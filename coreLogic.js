@@ -52,12 +52,20 @@ class CoreLogic {
   async fetchSubmission(roundNumber) {
     console.log('fetchSubmission called');
     try {
-      const cid = await this.twitterTask.getRoundCID(roundNumber);
-      if (cid) {
-        console.log('about to make submission with CID: ', cid);
-        return cid;
-      } else {
+      if (
+        this.twitterTask === null ||
+        this.twitterTask === undefined ||
+        this.twitterTask === ''
+      ) {
         console.log('No submission call made as return cid is null');
+      } else {
+        const cid = await this.twitterTask.getRoundCID(roundNumber);
+        if (cid) {
+          console.log('about to make submission with CID: ', cid);
+          return cid;
+        } else {
+          console.log('No submission call made as return cid is null');
+        }
       }
     } catch (error) {
       console.error('No submission call made as return cid is null', error);
@@ -293,7 +301,7 @@ class CoreLogic {
    * @memberof Node
    */
   validateDistribution = async (
-    distributionListSubmitter,
+    rawDistributionList,
     round,
     _dummyDistributionList,
     _dummyTaskState,
@@ -302,11 +310,6 @@ class CoreLogic {
     // this logic can be same as generation of distribution list function and based on the comparision will final object , decision can be made
     // return true;
     try {
-      console.log('Distribution list Submitter', distributionListSubmitter);
-      const rawDistributionList = await namespaceWrapper.getDistributionList(
-        distributionListSubmitter,
-        round,
-      );
       let fetchedDistributionList;
       if (rawDistributionList == null) {
         return true;
