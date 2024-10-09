@@ -301,7 +301,7 @@ class CoreLogic {
    * @memberof Node
    */
   validateDistribution = async (
-    rawDistributionList,
+    distributionListSubmitter,
     round,
     _dummyDistributionList,
     _dummyTaskState,
@@ -310,6 +310,11 @@ class CoreLogic {
     // this logic can be same as generation of distribution list function and based on the comparision will final object , decision can be made
     // return true;
     try {
+      console.log('Distribution list Submitter', distributionListSubmitter);
+      const rawDistributionList = await namespaceWrapper.getDistributionList(
+        distributionListSubmitter,
+        round,
+      );
       let fetchedDistributionList;
       if (rawDistributionList == null) {
         return true;
